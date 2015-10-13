@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import special
 from scipy import optimize
+from utils import *
 
 def azimuthalAverage(image, center=None, stddev=False, returnradii=False, return_nr=False, 
         binsize=0.5, weights=None, steps=False, interpnan=False, left=None, right=None, return_max=False):
@@ -142,21 +143,91 @@ def propagate_by_fresnel(wf, m_per_pix, d, wave):
     wf_new = np.fft.ifft2(g_ft)
     return np.fft.fftshift(wf_new)
 
-def curved_wf(sz,m_per_pix,f_length,wave):
+def curved_wf(sz,m_per_pix,f_length=np.infty,wave=633e-9, tilt=[0.0,0.0], power=np.NaN):
     """A curved wavefront centered on the *middle*
     of the python array.
     
-    Try this at home:
-    
-    The wavefront phase we want is:
-    phi = alpha*n**2, with
-    alpha = 0.5*m_per_pix**2/wave/f_length
+    Parameters
+    ----------
+    tilt: float
+        Tilt of the wavefront in radians in the x and y directions.        
     """
-    x = np.arange(sz) - sz/2
+    x = np.arange(sz) - sz//2
     xy = np.meshgrid(x,x)
     rr =np.sqrt(xy[0]**2 + xy[1]**2)
-    phase = 0.5*m_per_pix**2/wave/f_length*rr**2
+    if (power!=power):
+        power = 1.0/f_length
+    #The following line computes phase in *wavelengths*
+    phase = 0.5*m_per_pix**2/wave*power*rr**2 
+    phase += tilt[0]*xy[0]*m_per_pix/wave
+    phase += tilt[1]*xy[1]*m_per_pix/wave
+
     return np.exp(2j*np.pi*phase)
+
+def gmt(dim,widths,pistons=[0,0,0,0,0,0]):
+    """This function creates a GMT pupil.
+    http://www.gmto.org/Resources/GMT-ID-01467-Chapter_6_Optics.pdf
+    
+    Parameters
+    ----------
+    dim: int
+        Size of the 2D array
+    width: int
+        diameter of the primary mirror (scaled to 25.448m)
+        
+    Returns
+    -------
+    pupil: float array (sz,sz)
+        2D array circular pupil mask
+    """
+    #The geometry is complex... with eliptical segments due to their tilt.
+    #We'll just approximate by segments of approximately the right size.
+    pupils=[]
+    try:
+        awidth = widths[0]
+    except:
+        widths = [widths]
+    for width in widths:
+        segment_dim = width*8.27/25.448
+        segment_sep = width*(8.27 + 0.3)/25.448
+        obstruct = width*3.2/25.448
+        rollx = int(np.round(np.sqrt(3)/2.0*segment_sep))
+        one_seg = circle(dim, segment_dim)
+        pupil = one_seg - circle(dim, obstruct) + 0j
+        pupil += np.exp(1j*pistons[0])*np.roll(np.roll(one_seg,  int(np.round(0.5*segment_sep)), axis=0),rollx, axis=1)
+        pupil += np.exp(1j*pistons[1])*np.roll(np.roll(one_seg, -int(np.round(0.5*segment_sep)), axis=0),rollx, axis=1)
+        pupil += np.exp(1j*pistons[4])*np.roll(np.roll(one_seg,  int(np.round(0.5*segment_sep)), axis=0),-rollx, axis=1)
+        pupil += np.exp(1j*pistons[3])*np.roll(np.roll(one_seg, -int(np.round(0.5*segment_sep)), axis=0),-rollx, axis=1)
+        pupil += np.exp(1j*pistons[5])*np.roll(one_seg, int(segment_sep), axis=0)
+        pupil += np.exp(1j*pistons[2])*np.roll(one_seg, -int(segment_sep), axis=0)
+        pupils.append(pupil)
+    return np.array(pupils)
+
+def mask2s(dim):
+    """ Returns 4 pupil mask that split the pupil into halves.
+    """
+    masks = np.zeros( (4,dim,dim) )
+    masks[0,0:dim/2,:]=1
+    masks[1,dim/2:,:]=1
+    masks[2,:,0:dim/2]=1
+    masks[3,:,dim/2:]=1
+    return masks
+
+def mask6s(dim):
+    """ Returns 4 pupil mask that split the pupil into halves, with a
+    six-way symmetry
+    """
+    masks = np.zeros( (4,dim,dim) )
+    x = np.arange(dim) - dim//2
+    xy = np.meshgrid(x,x)
+    theta = np.arctan2(xy[0],xy[1])
+    twelfths = ( (theta + np.pi)/2/np.pi*12).astype(int)
+    masks[0,:,:]=(twelfths//2) % 2
+    masks[1,:,:]=(twelfths//2 + 1) % 2
+    masks[2,:,:]=((twelfths+1)//2) % 2
+    masks[3,:,:]=((twelfths+1)//2 + 1) % 2
+    
+    return masks
 
 def kmf(sz):
     """This function creates a periodic wavefront produced by Kolmogorov turbulence. 

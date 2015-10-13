@@ -9,6 +9,13 @@ import pylab as pl
 import glob
 import numpy as np
 
+def from_arcsec(arcsec):
+    return np.radians(arcsec/60.0/60.0)
+    
+def to_arcsec(radians):
+    return np.degrees(radians)*60.0*60.0
+
+
 def save_plot(data, title, directory, imagename, format='.jpg'):
     """
     
