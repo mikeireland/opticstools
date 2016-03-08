@@ -789,7 +789,7 @@ def nglass(l, glass='sio2'):
             n += B[i]*l**2/(l**2 - C[i])
     return np.sqrt(n)
 
-class fresnel_propagator():
+class FresnelPropagator():
     """Propagate a wave by Fresnel diffraction"""
     def __init__(self,sz,m_per_pix, d, wave,nthreads=nthreads):
         """Initiate this fresnel_propagator for a particular wavelength, 
@@ -808,7 +808,7 @@ class fresnel_propagator():
         nthreads: int
             Number of threads. 
         """
-    
+        self.sz = sz
         self.nthreads=nthreads
         #Co-ordinate axis of the wavefront Fourier transform. Not that 0 must be in the corner.
         #x is in cycles per wavefront dimension.
@@ -832,12 +832,12 @@ class fresnel_propagator():
             Wavefront after propagating.
         """
 
-        if (wf.shape[0] != sz | wf.shape[1] != sz):
+        if (wf.shape[0] != self.sz | wf.shape[1] != self.sz):
             print("ERROR: Input wavefront must match the size!")
             raise UserWarning
         if (self.nthreads>0):
-            g_ft = pyfftw.interfaces.numpy_fft.fft2(wf,nthreads=self.nthreads)*self.h_ft
-            wf_new = pyfftw.interfaces.numpy_fft.ifft2(g_ft,nthreads=self.nthreads)
+            g_ft = pyfftw.interfaces.numpy_fft.fft2(wf,threads=self.nthreads)*self.h_ft
+            wf_new = pyfftw.interfaces.numpy_fft.ifft2(g_ft,threads=self.nthreads)
         else:
             g_ft = np.fft.fft2(wf)*self.h_ft
             wf_new = np.fft.ifft2(g_ft)
