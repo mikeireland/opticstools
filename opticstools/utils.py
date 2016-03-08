@@ -180,7 +180,8 @@ def regrid_fft(im,new_shape):
         ftim[0:ftim.shape[0]/2,0:ftim.shape[1]]
     new_ftim[new_shape[0]-ftim.shape[0]/2:,0:ftim.shape[1]] = \
         ftim[ftim.shape[0]/2:,0:ftim.shape[1]]
-    return np.fft.irfft2(new_ftim)
+    new_im = np.fft.irfft2(new_ftim)
+    return new_im*( np.prod(new_shape)/np.prod(im.shape) )
     
 def interpolate_by_2x(array_before, npix):
     """Crops the electric field to twice the size of the square lenslet and interpolates by the interpolation factor

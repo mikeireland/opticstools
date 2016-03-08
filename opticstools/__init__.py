@@ -4,7 +4,7 @@
 """ A set of frequently used optical tools """
 
 __author__ = "Michael Ireland <michael.ireland@anu.edu.au>"
-__version__ = "0.1"
+__version__ = "0.2"
 
 from opticstools import *
 import utils

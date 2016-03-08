@@ -6,12 +6,19 @@ Dr Michael Ireland
 Adam Rains
 """
 
-from __future__ import print_function
+from __future__ import print_function, division
+import pdb
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import special
 from scipy import optimize
 from utils import *
+try:
+    import pyfftw
+    pyfftw.interfaces.cache.enable()
+    nthreads=6 
+except:
+    nthreads=0
 
 def azimuthalAverage(image, center=None, stddev=False, returnradii=False, return_nr=False, 
         binsize=0.5, weights=None, steps=False, interpnan=False, left=None, right=None, return_max=False):
@@ -143,28 +150,89 @@ def propagate_by_fresnel(wf, m_per_pix, d, wave):
     wf_new = np.fft.ifft2(g_ft)
     return np.fft.fftshift(wf_new)
 
-def curved_wf(sz,m_per_pix,f_length=np.infty,wave=633e-9, tilt=[0.0,0.0], power=np.NaN):
+def airy(x, obstruction_sz=0):
+    """Return an Airy disk as an electric field as a function of angle in units of 
+    lambda/D, with the possibility of a circular obstruction that is a fraction of the
+    pupil size.
+    
+    The total intensity is proportional to the area, so the peak intensity is 
+    proportional to the square of the area, and the peak electric field proportional
+    to the area."""
+    ix = x>0
+    y1 = np.ones(len(x))
+    y1[ix] = 2*special.jn(1,np.pi*x[ix])/(np.pi*x[ix])
+    if obstruction_sz>0:
+        y2 = np.ones(len(x))
+        y2[ix] = 2*special.jn(1,np.pi*x[ix]*obstruction_sz)/(np.pi*x[ix]*obstruction_sz)
+        y1 -= obstruction_sz**2 * y2
+        y1 /= (1 - obstruction_sz**2)
+    
+    return y1
+
+def curved_wf(sz,m_per_pix,f_length=np.infty,wave=633e-9, tilt=[0.0,0.0], power=None,diam=None,defocus=None):
     """A curved wavefront centered on the *middle*
     of the python array.
     
     Parameters
     ----------
-    tilt: float
-        Tilt of the wavefront in radians in the x and y directions.        
+    sz: int
+        Size of the wavefront in pixels
+    m_per_pix: float
+        Meters per pixel
+    tilt: float (optional)
+        Tilt of the wavefront in radians in the x and y directions. 
+    wave: float
+        Wavelength in m       
     """
     x = np.arange(sz) - sz//2
     xy = np.meshgrid(x,x)
     rr =np.sqrt(xy[0]**2 + xy[1]**2)
-    if (power!=power):
+    if not power:
         power = 1.0/f_length
+    if not diam:
+        diam=sz*m_per_pix
     #The following line computes phase in *wavelengths*
-    phase = 0.5*m_per_pix**2/wave*power*rr**2 
-    phase += tilt[0]*xy[0]*m_per_pix/wave
-    phase += tilt[1]*xy[1]*m_per_pix/wave
+    if defocus:
+        phase = defocus*(rr*m_per_pix/diam*2)**2
+    else:
+        phase = 0.5*m_per_pix**2/wave*power*rr**2 
+    phase += tilt[0]*xy[0]*diam/sz/wave
+    phase += tilt[1]*xy[1]*diam/sz/wave
 
     return np.exp(2j*np.pi*phase)
 
-def gmt(dim,widths,pistons=[0,0,0,0,0,0]):
+def fourier_wf(sz,xcyc_aperture,ycyc_aperture,amp,phase):
+    """This function creates a phase aberration, centered on the
+    middle of a python array
+    
+    Parameters
+    ----------
+    dim: int
+        Size of the 2D array
+    xcyc_aperture: float
+        cycles per aperture in the x direction.
+    ycyc_aperture: float
+        cycles per aperture in the y direction.
+    amp: float
+        amplitude of the aberration in radians
+    phase: float
+        phase of the aberration in radians.
+        
+    Returns
+    -------
+    pupil: float array (sz,sz)
+        2D array circular pupil mask
+    """
+    x = np.arange(sz) - sz//2
+    xy = np.meshgrid(x,x)
+    xx = xy[0]
+    yy = xy[1]
+    zz = 2*np.pi*(xx*xcyc_aperture/sz + yy*ycyc_aperture/sz)
+    aberration = np.exp( 1j * amp * (np.cos(phase)*np.cos(zz) + np.sin(phase)*np.sin(zz)))
+    return aberration
+
+
+def gmt(dim,widths=None,pistons=[0,0,0,0,0,0],m_pix=None):
     """This function creates a GMT pupil.
     http://www.gmto.org/Resources/GMT-ID-01467-Chapter_6_Optics.pdf
     
@@ -183,6 +251,11 @@ def gmt(dim,widths,pistons=[0,0,0,0,0,0]):
     #The geometry is complex... with eliptical segments due to their tilt.
     #We'll just approximate by segments of approximately the right size.
     pupils=[]
+    if m_pix:
+        widths = 25.448/m_pix
+    elif not widths:
+        print("ERROR: Must set widths or m_pix")
+        raise UserWarning
     try:
         awidth = widths[0]
     except:
@@ -202,6 +275,8 @@ def gmt(dim,widths,pistons=[0,0,0,0,0,0]):
         pupil += np.exp(1j*pistons[2])*np.roll(one_seg, -int(segment_sep), axis=0)
         pupils.append(pupil)
     return np.array(pupils)
+
+#--- Start masks ---
 
 def mask2s(dim):
     """ Returns 4 pupil mask that split the pupil into halves.
@@ -228,6 +303,37 @@ def mask6s(dim):
     masks[3,:,:]=((twelfths+1)//2 + 1) % 2
     
     return masks
+
+def angel_mask(sz,m_per_pix,diam=25.5):
+    """Create a mask like Roger Angel et al's original GMT tilt and piston sensor.
+    """
+    diam_in_pix = diam/m_per_pix
+    inner_circ = circle(sz,int(round(diam_in_pix/3)))
+    outer_an = circle(sz,int(round(diam_in_pix))) - inner_circ
+    mask6s = mask6s(sz)
+    masks = np.array([inner_circ + outer_an*mask6s[2,:,:],inner_circ + outer_an*mask6s[3,:,:],outer_an])
+    return masks
+
+def angel_mask_mod(sz,wave,diam=25.5):
+    """Create a mask like Roger Angel et al's original GMT tilt and piston sensor, except 
+    we 50/50 split the inner segment.
+    """
+    diam_in_pix = diam/m_per_pix
+    inner_circ = circle(sz,int(round(diam_in_pix/3)))
+    outer_an = circle(sz,int(round(diam_in_pix))) - inner_circ
+    mask6s = mask6s(sz)
+    masks = np.array([0.5*inner_circ + outer_an*mask6s[2,:,:],0.5*inner_circ + outer_an*mask6s[3,:,:]])
+    return masks
+
+def diversity_mask(sz,m_per_pix,defocus=2.0):
+    """Create a traditional phase diversity mask.
+    """
+    wf1 = curved_wf(sz,m_per_pix,defocus=defocus)
+    wf2 = curved_wf(sz,m_per_pix,defocus=-defocus)
+    masks = np.array([wf1,wf2])
+    return masks
+    
+#--- End Masks ---
 
 def kmf(sz):
     """This function creates a periodic wavefront produced by Kolmogorov turbulence. 
@@ -669,6 +775,12 @@ def nglass(l, glass='sio2'):
     elif (glass == 'nf2'):
         B = np.array( [1.39757037,1.59201403e-1,1.26865430])
         C = np.array( [9.95906143e-3,5.46931752e-2,1.19248346e2])
+    elif (glass == 'nsf11'):
+        B = np.array([1.73759695E+00,   3.13747346E-01, 1.89878101E+00])
+        C = np.array([1.31887070E-02,   6.23068142E-02, 1.55236290E+02])
+    elif (glass == 'ncaf2'):
+        B = np.array([0.5675888, 0.4710914, 3.8484723])
+        C = np.array([0.050263605,  0.1003909,  34.649040])
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning
@@ -676,3 +788,57 @@ def nglass(l, glass='sio2'):
     for i in range(len(B)):
             n += B[i]*l**2/(l**2 - C[i])
     return np.sqrt(n)
+
+class fresnel_propagator():
+    """Propagate a wave by Fresnel diffraction"""
+    def __init__(self,sz,m_per_pix, d, wave,nthreads=nthreads):
+        """Initiate this fresnel_propagator for a particular wavelength, 
+        distance etc.
+    
+        Parameters
+        ----------
+        wf: float array
+            
+        m_per_pix: float
+            Scale of the pixels in the input wavefront in metres.
+        d: float
+            Distance to propagate the wavefront.
+        wave: float
+            Wavelength in metres.
+        nthreads: int
+            Number of threads. 
+        """
+    
+        self.nthreads=nthreads
+        #Co-ordinate axis of the wavefront Fourier transform. Not that 0 must be in the corner.
+        #x is in cycles per wavefront dimension.
+        x = (((np.arange(sz)+sz/2) % sz) - sz/2)/m_per_pix/sz
+        xy = np.meshgrid(x,x)
+        uu =np.sqrt(xy[0]**2 + xy[1]**2)
+        self.h_ft = np.exp(1j*np.pi*uu**2*wave*d)
+    
+    def propagate(self,wf):
+        """Propagate a wavefront, according to the parameters established on the
+        __init__. No error checking for speed.
+        
+        Parameters
+        ----------
+        wf: complex array
+            Wavefront, i.e. a complex electric field in the scalar approximation.
+        
+        Returns
+        -------
+        wf_new: float array
+            Wavefront after propagating.
+        """
+
+        if (wf.shape[0] != sz | wf.shape[1] != sz):
+            print("ERROR: Input wavefront must match the size!")
+            raise UserWarning
+        if (self.nthreads>0):
+            g_ft = pyfftw.interfaces.numpy_fft.fft2(wf,nthreads=self.nthreads)*self.h_ft
+            wf_new = pyfftw.interfaces.numpy_fft.ifft2(g_ft,nthreads=self.nthreads)
+        else:
+            g_ft = np.fft.fft2(wf)*self.h_ft
+            wf_new = np.fft.ifft2(g_ft)
+        return wf_new
