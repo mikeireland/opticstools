@@ -337,9 +337,8 @@ def diversity_mask(sz,m_per_pix,defocus=2.0):
 
 def kmf(sz):
     """This function creates a periodic wavefront produced by Kolmogorov turbulence. 
-    It SHOULD normalised so that the variance at a distance of 1 pixel is 1 radian^2,
-    but this is totally wrong now. The correct normalisation comes from an
-    empirical calculation, scaled like in the IDL code.
+    It SHOULD normalised so that the variance at a distance of 1 pixel is 1 radian^2.
+    To scale this to an r_0 of r_0_pix, multiply by sqrt(6.88*r_0_pix**(-5/3))
     
     Parameters
     ----------
