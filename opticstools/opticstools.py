@@ -12,10 +12,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import special
 from scipy import optimize
-from utils import *
+from .utils import *
 try:
     import pyfftw
     pyfftw.interfaces.cache.enable()
+    pyfftw.interfaces.cache.set_keepalive_time(1.0)
     nthreads=6 
 except:
     nthreads=0
@@ -158,7 +159,7 @@ def airy(x, obstruction_sz=0):
     The total intensity is proportional to the area, so the peak intensity is 
     proportional to the square of the area, and the peak electric field proportional
     to the area."""
-    ix = x>0
+    ix = np.where(x>0)[0]
     y1 = np.ones(len(x))
     y1[ix] = 2*special.jn(1,np.pi*x[ix])/(np.pi*x[ix])
     if obstruction_sz>0:
