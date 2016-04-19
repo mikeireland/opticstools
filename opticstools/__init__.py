@@ -8,3 +8,4 @@ __version__ = "0.2"
 
 from .opticstools import *
 from . import utils
+from . import pathlength
