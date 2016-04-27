@@ -159,6 +159,8 @@ def rotate_xz(u, theta_deg):
     M = np.array([[np.cos(th),0,np.sin(th)],[0,1,0],[-np.sin(th),0,np.cos(th)]])
     return np.dot(M, u)
 
+def shift_and_add
+
 def regrid_fft(im,new_shape):
     """Regrid onto a larger number of pixels using an fft. This is optimal
     for Nyquist sampled data.
@@ -184,7 +186,8 @@ def regrid_fft(im,new_shape):
     return new_im*( np.prod(new_shape)/np.prod(im.shape) )
     
 def interpolate_by_2x(array_before, npix):
-    """Crops the electric field to twice the size of the square lenslet and interpolates by the interpolation factor
+    """Expands a complex array by a factor of 2, using a Fourier Transform to interpolate
+    in-between pixels.
     
     Parameters
     ----------

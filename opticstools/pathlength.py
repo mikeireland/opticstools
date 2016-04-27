@@ -30,7 +30,21 @@ def solve_pathlength_func(p,edge_y,edge_dydx,D,L0):
     
 def solve_pathlength(edge_y=[0,0], edge_dydx=[0,0], D=1.0, L=1.2):
     """Solve for polynomial coefficients for a spline of fixed
-    pathlength between two points."""
+    pathlength between two points.
+    
+    Parameters
+    ----------
+    edge_y: [float,float]
+        Beginning and end waveguide co-ordinate.
+        
+    edge_dydx: [float,float]
+        Beginning and end waveguide derivatives.
+        
+    D: float
+        Length of the array in the x co-ordinate direction
+        
+    L: float
+        Pathlength of the waveguide"""
     
     #From https://en.wikipedia.org/wiki/Cubic_Hermite_spline. This gives us an
     #initial spline that fits.
