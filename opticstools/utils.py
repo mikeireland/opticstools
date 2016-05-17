@@ -159,8 +159,6 @@ def rotate_xz(u, theta_deg):
     M = np.array([[np.cos(th),0,np.sin(th)],[0,1,0],[-np.sin(th),0,np.cos(th)]])
     return np.dot(M, u)
 
-def shift_and_add
-
 def regrid_fft(im,new_shape):
     """Regrid onto a larger number of pixels using an fft. This is optimal
     for Nyquist sampled data.
