@@ -8,6 +8,8 @@ import pylab as pl
 #import cv2
 import glob
 import numpy as np
+import pdb
+import matplotlib.pyplot as plt
 
 def from_arcsec(arcsec):
     return np.radians(arcsec/60.0/60.0)
@@ -144,6 +146,42 @@ def hexagon(dim, width):
     hex = np.zeros((dim,dim))
     hex[w]=1.0
     return hex
+
+def octagon(dim, width):
+    """This function creates a hexagon.
+    
+    Parameters
+    ----------
+    dim: int
+        Size of the 2D array
+    width: int
+        flat-to-flat width of the hexagon
+        
+    Returns
+    -------
+    pupil: float array (sz,sz)
+        2D array hexagonal pupil mask
+    """
+    x = np.arange(dim)-dim/2.0
+    xy = np.meshgrid(x,x)
+    xx = xy[1]
+    yy = xy[0]
+    w = np.where((yy < width/2) * (yy > (-width/2)) * \
+                 (xx < width/2) * (xx > (-width/2)) * \
+                 (yy < width/np.sqrt(2) - xx) * \
+                 (yy > -width/np.sqrt(2) + xx) * \
+                 (yy > -width/np.sqrt(2) - xx) * \
+                 (yy < width/np.sqrt(2) + yy))[0]
+    
+    oct = (yy < width/2) * (yy > (-width/2)) * \
+          (xx < width/2) * (xx > (-width/2)) * \
+          (yy < width/np.sqrt(2) - xx) * \
+          (yy > -width/np.sqrt(2) + xx) * \
+          (yy > -width/np.sqrt(2) - xx) * \
+          (yy < width/np.sqrt(2) + xx)
+    oct = oct.astype(float)
+    return oct
+
 
 def annulus(npix, r_large, r_small):
     """Compute the input electric field (annulus x distorted wavefront)
