@@ -163,6 +163,10 @@ def airy(x_in, obstruction_sz=0):
     Parameters
     ----------
     x: array-like 
+        Angular position in units of lambda/D for the Airy function.
+        
+    obstruction_sz: float
+        Fractional size of the obstruction for a circular aperture.
     """
     
     #Implicitly do a shallow copy of x_in to a numpy array x.
