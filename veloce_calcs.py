@@ -31,9 +31,9 @@ xoffset0 = np.array([-2, 0, 2, -3, 3, -4,
 #215 microns. 
 
 plt.clf()
-labels = ['Option 1', 'Option 1 big','Option 2','Option 2 vbig']
-diams  = [0.44,0.493,0.47,0.5687]
-losses = [1,1,0.99**2,0.99**2]
+labels = ['Option 1', 'Option 1 big','Option 2','Option 2 vbig','Option 2 opt']
+diams  = [0.44,0.493,0.47,0.5687, 0.47*93.2/(96.4*np.sqrt(3)/2)]
+losses = [1,1,0.99**2,0.99**2,0.99**2]
 for run_label, arcsec_lens, loss in zip(labels,diams,losses): #Was 0.44
     #Flat to flat for an octagon.
     fiber_core = 45.0e-6       
@@ -74,5 +74,10 @@ for run_label, arcsec_lens, loss in zip(labels,diams,losses): #Was 0.44
     plt.plot(seeings, throughputs_option1, label=run_label)
     plt.xlabel('Seeing (")')
     plt.ylabel('Slit/Geometry Loss')
+
     
 plt.legend()
+
+#Jon's numbers: Option 2 had 96.4 micron spot size based on edge to edge rather than FWHM. 
+#The difference is sqrt(3)/2. 
+slit_width_2vbig = 96.4 * np.sqrt(3)/2 * (245.0/202.5)

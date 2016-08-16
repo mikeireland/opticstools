@@ -4,6 +4,7 @@ Author:
 Dr Michael Ireland
 Adam Rains 
 """
+from __future__ import division, print_function
 import pylab as pl
 #import cv2
 import glob
@@ -90,7 +91,7 @@ def circle(dim,width):
     pupil: float array (sz,sz)
         2D array circular pupil mask
     """
-    x = np.arange(dim)-dim/2.0
+    x = np.arange(dim)-dim//2
     xy = np.meshgrid(x,x)
     xx = xy[1]
     yy = xy[0]
@@ -112,7 +113,7 @@ def square(dim, width):
     pupil: float array (sz,sz)
         2D array square pupil mask
     """
-    x = np.arange(dim)-dim/2.0
+    x = np.arange(dim)-dim//2
     xy = np.meshgrid(x,x)
     xx = xy[1]
     yy = xy[0]
@@ -120,6 +121,28 @@ def square(dim, width):
     square = np.zeros((dim,dim))
     square[w] = 1.0
     return square
+    
+def gauss(dim,width):
+    """This creates a Gausssian beam. Width is the 1/e^2 intensity
+    diameter. The electric field is returned. 
+    
+    Parameters
+    ----------
+    dim: int
+        Size of the 2D array
+    width: int
+        width of the square
+    
+    Returns
+    -------
+    pupil: float array (sz,sz)
+        2D array square pupil mask
+    """
+    x = np.arange(dim) - dim//2
+    xy = np.meshgrid(x,x)
+    rr = np.sqrt(xy[0]**2 + xy[1]**2)
+    beam = np.exp(-(rr/width)**2)
+    return beam
     
 def hexagon(dim, width):
     """This function creates a hexagon.

@@ -159,11 +159,16 @@ def airy(x, obstruction_sz=0):
     The total intensity is proportional to the area, so the peak intensity is 
     proportional to the square of the area, and the peak electric field proportional
     to the area."""
+    try:
+        x = np.array(x)
+    except:
+        print("ERROR: x must be castable to an array")
+        raise UserWarning
     ix = np.where(x>0)[0]
-    y1 = np.ones(len(x))
+    y1 = np.ones(x.shape)
     y1[ix] = 2*special.jn(1,np.pi*x[ix])/(np.pi*x[ix])
     if obstruction_sz>0:
-        y2 = np.ones(len(x))
+        y2 = np.ones(x.shape)
         y2[ix] = 2*special.jn(1,np.pi*x[ix]*obstruction_sz)/(np.pi*x[ix]*obstruction_sz)
         y1 -= obstruction_sz**2 * y2
         y1 /= (1 - obstruction_sz**2)
@@ -336,15 +341,22 @@ def diversity_mask(sz,m_per_pix,defocus=2.0):
     
 #--- End Masks ---
 
-def kmf(sz):
+def kmf(sz, L_0=np.inf):
     """This function creates a periodic wavefront produced by Kolmogorov turbulence. 
     It SHOULD normalised so that the variance at a distance of 1 pixel is 1 radian^2.
     To scale this to an r_0 of r_0_pix, multiply by sqrt(6.88*r_0_pix**(-5/3))
+    
+    The value of 1/15.81 in the code is (I think) a numerical approximation for the 
+    value in e.g. Conan00 of np.sqrt(0.0229/2/np.pi)
     
     Parameters
     ----------
     sz: int
         Size of the 2D array
+        
+    l_0: (optional) float
+        The von-Karmann outer scale. If not set, the structure function behaves with
+        an outer scale of approximately XXX
     
     Returns
     -------
@@ -356,15 +368,27 @@ def kmf(sz):
     ft_wf = np.exp(2j * np.pi * np.random.random((sz,sz/2+1)))*dist2**(-11.0/12.0)*sz/15.81
     ft_wf[0,0]=0
     return np.fft.irfft2(ft_wf)
-    
+
+def von_karman_structure(B, r_0=1.0, L_0=1e6):
+    """The Von Karan structure function, from Conan et al 2000"""
+    return 0.1717*(r_0/L_0)**(-5/3.)*(1.005635 - (2*np.pi*B/L_0)**(5/6.)*special.kv(5/6.,2*np.pi*B/L_0))
+ 
 def test_kmf(sz,ntests):
-    vars = np.zeros(ntests)
+    """Test the kmf. The variance at sz/4 is down by a factor of 0.35 over the 
+    Kolmogorov function."""
+    vars_1pix = np.zeros(ntests)
+    vars_quarter = np.zeros(ntests)
     for i in range(ntests):
         wf = kmf(sz)
-        vars[i] = 0.5* ( np.mean((wf[1:,:] - wf[:-1,:])**2) + \
-                      np.mean((wf[:,1:] - wf[:,:-1])**2) )
-    print("Mean var: {0:7.3e} Sdev var: {1:7.3e}".format(np.mean(vars),np.std(vars)))
-    
+        vars_1pix[i] = 0.5*(np.mean((wf[1:,:] - wf[:-1,:])**2) + \
+                            np.mean((wf[:,1:] - wf[:,:-1])**2))
+        vars_quarter[i] = 0.5*(np.mean((np.roll(wf,sz//4,axis=0) - wf)**2) + \
+                            np.mean((np.roll(wf,sz//4,axis=1) - wf)**2))
+                        
+    print("Mean var: {0:7.3e} Sdev var: {1:7.3e}".format(np.mean(vars_1pix),np.std(vars_1pix)))
+    print("Variance at sz//4 decreased by: {0:7.3f}".\
+        format(np.mean(vars_quarter)/np.mean(vars_1pix)/(sz/4)**(5./3.)))
+        
 def moffat(theta, hw, beta=4.0):
     """This creates a moffatt function for simulating seeing.
     The output is an array with the same dimensions as theta.
@@ -453,37 +477,6 @@ def grating_sim(u, l, s, ml_d, refract=False):
     v = v_l*l + v_s*s + v_n*n
     
     return v
-      
-def nglass(l, glass='sio2'):
-    """Refractive index of fused silica and other glasses. Note that C is
-    in microns^{-2}
-    
-    Parameters
-    ----------
-    l: wavelength 
-    """
-    try:
-        nl = len(l)
-    except:
-        l = [l]
-        nl=1
-    l = np.array(l)
-    if (glass == 'sio2'):
-        B = np.array([0.696166300, 0.407942600, 0.897479400])
-        C = np.array([4.67914826e-3,1.35120631e-2,97.9340025])
-    elif (glass == 'bk7'):
-        B = np.array([1.03961212,0.231792344,1.01046945])
-        C = np.array([6.00069867e-3,2.00179144e-2,1.03560653e2])
-    elif (glass == 'nf2'):
-        B = np.array( [1.39757037,1.59201403e-1,1.26865430])
-        C = np.array( [9.95906143e-3,5.46931752e-2,1.19248346e2])
-    else:
-        print("ERROR: Unknown glass {0:s}".format(glass))
-        raise UserWarning
-    n = np.ones(nl)
-    for i in range(len(B)):
-            n += B[i]*l**2/(l**2 - C[i])
-    return np.sqrt(n)
 
 def join_bessel(U,V,j):
     """In order to solve the Laplace equation in cylindrical co-ordinates, both the
@@ -496,30 +489,38 @@ def join_bessel(U,V,j):
     return U*special.jn(j+1,U)*special.kn(j,W) - W*special.kn(j+1,W)*special.jn(j,U)
     
 def neff(V, accurate_roots=True):
- """Find the effective indices of all modes for a given value of 
- the fiber V number. """
- delu = 0.04
- U = np.arange(delu/2,V,delu)
- W = np.sqrt(V**2 - U**2)
- all_roots=np.array([])
- n_per_j=np.array([],dtype=int)
- n_modes=0
- for j in range(int(V+1)):
-   f = U*special.jn(j+1,U)*special.kn(j,W) - W*special.kn(j+1,W)*special.jn(j,U)
-   crossings = np.where(f[0:-1]*f[1:] < 0)[0]
-   roots = U[crossings] - f[crossings]*( U[crossings+1] - U[crossings] )/( f[crossings+1] - f[crossings] )
-   if accurate_roots:
-     for i,root in enumerate(roots):
-         roots[i] = optimize.newton(join_bessel, root, args=(V,j))
-   #import pdb; pdb.set_trace()
-   if (j == 0): 
-     n_modes = n_modes + len(roots)
-     n_per_j = np.append(n_per_j, len(roots))
-   else:
-     n_modes = n_modes + 2*len(roots)
-     n_per_j = np.append(n_per_j, len(roots)) #could be 2*length(roots) to account for sin and cos.
-   all_roots = np.append(all_roots,roots)
- return all_roots, n_per_j
+    """For a cylindrical fiber, find the effective indices of all modes for a given value 
+    of the fiber V number. 
+    
+    Parameters
+    ----------
+    V: float
+        The fiber V-number.
+    accurate_roots: bool (optional)
+        Do we find accurate roots using Newton-Rhapson iteration, or do we just use a 
+        first-order linear approach to zero-point crossing?"""
+    delu = 0.04
+    U = np.arange(delu/2,V,delu)
+    W = np.sqrt(V**2 - U**2)
+    all_roots=np.array([])
+    n_per_j=np.array([],dtype=int)
+    n_modes=0
+    for j in range(int(V+1)):
+        f = U*special.jn(j+1,U)*special.kn(j,W) - W*special.kn(j+1,W)*special.jn(j,U)
+        crossings = np.where(f[0:-1]*f[1:] < 0)[0]
+        roots = U[crossings] - f[crossings]*( U[crossings+1] - U[crossings] )/( f[crossings+1] - f[crossings] )
+        if accurate_roots:
+            for i,root in enumerate(roots):
+                roots[i] = optimize.newton(join_bessel, root, args=(V,j))
+        #import pdb; pdb.set_trace()
+        if (j == 0): 
+            n_modes = n_modes + len(roots)
+            n_per_j = np.append(n_per_j, len(roots))
+        else:
+            n_modes = n_modes + 2*len(roots)
+            n_per_j = np.append(n_per_j, len(roots)) #could be 2*length(roots) to account for sin and cos.
+        all_roots = np.append(all_roots,roots)
+    return all_roots, n_per_j
  
 def mode_2d(V, r, j=0, n=0, sampling=0.3,  sz=1024):
     """Create a 2D mode profile. 
@@ -780,7 +781,7 @@ def nglass(l, glass='sio2'):
         C = np.array([1.31887070E-02,   6.23068142E-02, 1.55236290E+02])
     elif (glass == 'ncaf2'):
         B = np.array([0.5675888, 0.4710914, 3.8484723])
-        C = np.array([0.050263605,  0.1003909,  34.649040])
+        C = np.array([0.050263605,  0.1003909,  34.649040])**2
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning
