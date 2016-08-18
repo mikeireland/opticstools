@@ -36,7 +36,7 @@ def bend_radius(x, p_d, p_d_d):
     """
     return (1+p_d(x)**2.0)**(3.0/2.0)/np.abs(p_d_d(x))
 
-def solve_pathlength_func(p,edge_y,edge_dydx,D,L0):
+def solve_pathlength_func(p,edge_y,edge_dydx,D,L0,fifth_order=0.0):
     """A helper function for solve_pathlength
     
     Parameters
@@ -51,6 +51,8 @@ def solve_pathlength_func(p,edge_y,edge_dydx,D,L0):
         Length in x coordinate.
     L0: float
         Waveguide length.
+    fifth_order: float
+        A fixed fifth order term.
         
     Returns
     -------
@@ -137,7 +139,7 @@ def solve_pathlength_bendrad(edge_y=[0,0], edge_dydx=[0,0], D=1.0, L=1.2, BendRa
     #print(final_params)
     return np.poly1d(final_params)    
     
-def solve_pathlength(edge_y=[0,0], edge_dydx=[0,0], D=1.0, L=1.2):
+def solve_pathlength(edge_y=[0,0], edge_dydx=[0,0], D=1.0, L=1.2,fifth_order=0):
     """Solve for polynomial coefficients for a spline of fixed
     pathlength between two points.
     
@@ -165,7 +167,7 @@ def solve_pathlength(edge_y=[0,0], edge_dydx=[0,0], D=1.0, L=1.2):
     #Initialize the spline direction to one side.
     init_params = np.append(1.0/D**3/1e3,params)
     print(init_params)
-    final_params,infodict,ier,mesg = op.fsolve(solve_pathlength_func, init_params,args=(edge_y,edge_dydx,D,L),full_output=True)
+    final_params,infodict,ier,mesg = op.fsolve(solve_pathlength_func, init_params,args=(edge_y,edge_dydx,D,L,fifth_order),full_output=True)
     if ier != 1:
         print(mesg)
         raise UserWarning
