@@ -569,13 +569,14 @@ def mode_2d(V, r, j=0, n=0, sampling=0.3,  sz=1024):
     x = (np.arange(sz)-sz/2)*sampling/r
     xy = np.meshgrid(x,x)
     r = np.sqrt(xy[0]**2 + xy[1]**2)
+    th = np.arctan2(xy[0],xy[1])
     win = np.where(r < 1)
     wout = np.where(r >= 1)
     the_mode = np.zeros( (sz,sz) )
     the_mode[win] = special.jn(j,r[win]*U0)
     scale = special.jn(j,U0)/special.kn(j,W0)
     the_mode[wout] = scale * special.kn(j,r[wout]*W0)
-    return the_mode/np.sqrt(np.sum(the_mode**2))
+    return the_mode/np.sqrt(np.sum(the_mode**2))*np.exp(1j*j*th)
 
 def compute_v_number(wavelength_in_mm, core_radius, numerical_aperture):
     """Computes the V number (can be interpreted as a kind of normalized optical frequency) for an optical fibre
