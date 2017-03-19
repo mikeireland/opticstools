@@ -144,7 +144,7 @@ def gauss(dim,width):
     beam = np.exp(-(rr/width)**2)
     return beam
     
-def hexagon(dim, width):
+def hexagon(dim, width, interp_edge=False):
     """This function creates a hexagon.
     
     Parameters
@@ -163,11 +163,16 @@ def hexagon(dim, width):
     xy = np.meshgrid(x,x)
     xx = xy[1]
     yy = xy[0]
-    w = np.where( (yy < width/2) * (yy > (-width/2)) * \
-     (yy < (width-np.sqrt(3)*xx)) * (yy > (-width+np.sqrt(3)*xx)) * \
-     (yy < (width+np.sqrt(3)*xx)) * (yy > (-width-np.sqrt(3)*xx)))
     hex = np.zeros((dim,dim))
-    hex[w]=1.0
+    if interp_edge:
+        #!!! Note implemented yet. Need to compute the orthogonal distance 
+        #from each line and accurately find fractional area of each pixel.
+        raise UserWarning
+    else:
+        w = np.where( (yy < width/2) * (yy > (-width/2)) * \
+         (yy < (width-np.sqrt(3)*xx)) * (yy > (-width+np.sqrt(3)*xx)) * \
+         (yy < (width+np.sqrt(3)*xx)) * (yy > (-width-np.sqrt(3)*xx)))
+        hex[w]=1.0
     return hex
 
 def octagon(dim, width):
@@ -243,6 +248,22 @@ def regrid_fft(im,new_shape):
         ftim[ftim.shape[0]/2:,0:ftim.shape[1]]
     new_im = np.fft.irfft2(new_ftim)
     return new_im*( np.prod(new_shape)/np.prod(im.shape) )
+    
+def rebin(a, shape):
+    """Re-bins an image to a new (smaller) image with summing    
+    
+    Originally from:
+    http://stackoverflow.com/questions/8090229/resize-with-averaging-or-rebin-a-numpy-2d-array
+    
+    Parameters
+    ----------
+    a: array
+        Input image
+    shape: (xshape,yshape)
+        New shape
+    """
+    sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
+    return a.reshape(sh).sum(-1).sum(1)
     
 def interpolate_by_2x(array_before, npix):
     """Expands a complex array by a factor of 2, using a Fourier Transform to interpolate

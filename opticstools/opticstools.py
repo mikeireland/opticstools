@@ -524,7 +524,8 @@ def neff(V, accurate_roots=True):
         Do we find accurate roots using Newton-Rhapson iteration, or do we just use a 
         first-order linear approach to zero-point crossing?"""
     delu = 0.04
-    U = np.arange(delu/2,V,delu)
+    numu = int(V/delu)
+    U = np.linspace(delu/2,V - 1e-6,numu)
     W = np.sqrt(V**2 - U**2)
     all_roots=np.array([])
     n_per_j=np.array([],dtype=int)
@@ -534,8 +535,13 @@ def neff(V, accurate_roots=True):
         crossings = np.where(f[0:-1]*f[1:] < 0)[0]
         roots = U[crossings] - f[crossings]*( U[crossings+1] - U[crossings] )/( f[crossings+1] - f[crossings] )
         if accurate_roots:
-            for i,root in enumerate(roots):
-                roots[i] = optimize.newton(join_bessel, root, args=(V,j))
+            for i in range(len(crossings)):
+                roots[i] = optimize.brenth(join_bessel, U[crossings[i]], U[crossings[i]+1], args=(V,j))
+        
+#roots[i] = optimize.newton(join_bessel, root, args=(V,j))
+#                except:
+#                    print("Problem finding root, trying 1 last time...")
+#                    roots[i] = optimize.newton(join_bessel, root + delu/2, args=(V,j))
         #import pdb; pdb.set_trace()
         if (j == 0): 
             n_modes = n_modes + len(roots)
@@ -563,20 +569,30 @@ def mode_2d(V, r, j=0, n=0, sampling=0.3,  sz=1024):
     TODO: Nonradial modes."""
     #First, find the neff values...
     u_all,n_per_j = neff(V)
-    ix = np.sum(n_per_j[0:j]) + n
+    
+    #Unsigned 
+    unsigned_j = np.abs(j)
+    th_offset = (j<0) * np.pi/2
+    
+    #Error check the input.
+    if n >= n_per_j[unsigned_j]:
+        print("ERROR: this mode is not bound!")
+        raise UserWarning
+    
+    ix = np.sum(n_per_j[0:unsigned_j]) + n
     U0 = u_all[ix]
     W0 = np.sqrt(V**2 - U0**2)
     x = (np.arange(sz)-sz/2)*sampling/r
     xy = np.meshgrid(x,x)
     r = np.sqrt(xy[0]**2 + xy[1]**2)
-    th = np.arctan2(xy[0],xy[1])
+    th = np.arctan2(xy[0],xy[1]) + th_offset
     win = np.where(r < 1)
     wout = np.where(r >= 1)
     the_mode = np.zeros( (sz,sz) )
-    the_mode[win] = special.jn(j,r[win]*U0)
-    scale = special.jn(j,U0)/special.kn(j,W0)
-    the_mode[wout] = scale * special.kn(j,r[wout]*W0)
-    return the_mode/np.sqrt(np.sum(the_mode**2))*np.exp(1j*j*th)
+    the_mode[win] = special.jn(unsigned_j,r[win]*U0)
+    scale = special.jn(unsigned_j,U0)/special.kn(unsigned_j,W0)
+    the_mode[wout] = scale * special.kn(unsigned_j,r[wout]*W0)
+    return the_mode/np.sqrt(np.sum(the_mode**2))*np.exp(1j*unsigned_j*th)
 
 def compute_v_number(wavelength_in_mm, core_radius, numerical_aperture):
     """Computes the V number (can be interpreted as a kind of normalized optical frequency) for an optical fibre
