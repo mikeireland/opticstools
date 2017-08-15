@@ -11,6 +11,8 @@ In the lab, with a smaller "pupil" from the SM28 fiber:
 0.0369 * 4
 Total Coupling = 0.407
 
+38 microns: 32.7%
+50 microns: 29.5%
 """
 
 from __future__ import division, print_function
@@ -22,7 +24,7 @@ from scipy.ndimage.interpolation import shift
 plt.ion()
 
 #Firstly, define a fiber beam
-wave = 0.65e-6
+wave = 0.74e-6 #0.65e-6
 m_pix = 0.1e-6
 core_diam = 3.5e-6
 numerical_aperture = 0.13
@@ -51,7 +53,8 @@ plotit = False
 
 #Now a calculation that mimics the 
 pup_size_microns_physical_mm = 1.45/300*7.2
-pup_size_lab = 50e-3#9e-3
+pup_size_lab = 50e-3 #or 9e-3
+pup_size_lab = 38e-3 #Trying to maximise flux.
 
 #Set non-None for this "special" calculation.
 lab_pup_scale = pup_size_lab/pup_size_microns_physical_mm

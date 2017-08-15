@@ -46,11 +46,12 @@ for nphot, label in zip([6e9, 3e8], ['Idealized', 'Non-saturated']):
         im_deriv1 = 0.5*(np.roll(im, j+1, axis=1)-np.roll(im, j-1, axis=1))
         #The Jacobian.
         X = np.array([im.flatten(), im_shifted.flatten(), im_deriv0.flatten(), im_deriv1.flatten()])
-        #The weights matrix.
+        #The weights vector, which is the inverse covariance.
         W = 1.0/im_var.flatten()
-        #Row-by-row multiplication of X by W
+        #Row-by-row multiplication of X by W. 
         WX = X.copy()
         for WXrow in WX: WXrow *= W
+        #
         cov = np.linalg.inv(np.dot(X, WX.T))
         contrast_sig.append(np.sqrt(cov[1,1])/nphot)
     
