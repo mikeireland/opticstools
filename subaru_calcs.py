@@ -1,4 +1,11 @@
-"""Some diffraction calculations for the RHEA slit feed. Speak to Mike about details...
+"""Some diffraction calculations for the RHEA slit feed. Computes the overlap between
+a diffraction limited beam and the RHEA IFU, averaging over a user-defined array of 
+pointing offsets in lenslet units. Overlaps are computed both at the 
+microlens plane and the fiber plane, demonstrating self-consistency. 
+
+In the case of the laboratory calculations, I assume that the coupling is the average
+of the coupling over all angles, i.e. that the output of a multi-mode fiber can be
+considered as an incoherent sum over all input angles. 
 
 Central lenslet mean coupling = 0.292
 Edge/top lenslet mean couplings = [0.012,0.028,0.012,0.028]. Sum=0.080
@@ -11,8 +18,9 @@ In the lab, with a smaller "pupil" from the SM28 fiber:
 0.0369 * 4
 Total Coupling = 0.407
 
-38 microns: 32.7%
+For multi-mode fiber inputs...
 50 microns: 29.5%
+38 microns: 32.7%
 """
 
 from __future__ import division, print_function
@@ -35,6 +43,8 @@ nf = 20
 nf = 1
 f_ratios = np.linspace(1150,1150,nf)
 obstruct = 0.25
+
+#Fiber offset.
 offset = 0.0e-6; label = 'Perfect Alignment'
 #offset = 1.0e-6; label = '1 micron offset'
 #offset = 2.0e-6; label = '2 microns offset'
@@ -54,7 +64,7 @@ plotit = False
 #Now a calculation that mimics the 
 pup_size_microns_physical_mm = 1.45/300*7.2
 pup_size_lab = 50e-3 #or 9e-3
-pup_size_lab = 38e-3 #Trying to maximise flux.
+#pup_size_lab = 38e-3 #Trying to maximise flux.
 
 #Set non-None for this "special" calculation.
 lab_pup_scale = pup_size_lab/pup_size_microns_physical_mm
@@ -68,17 +78,25 @@ rad_pix = wave/(sz*m_pix)
 m_pix_llet = rad_pix*llet_f/1e3
 
 V = ot.compute_v_number(wave, core_diam/2, numerical_aperture)
+
+#Compute the fiber mode for the fundumental
 fib_mode = ot.mode_2d(V, core_diam/2, j=0, n=0, sampling=m_pix,  sz=sz)
+
+#Compute the far field distribution for this fiber
 fib_angle = np.real(np.fft.fftshift(np.fft.fft2(np.fft.fftshift(fib_mode))))
 
+#Offset the fiber mode to account for misalignments.
 fib_mode = shift(fib_mode.real,(offset/m_pix,0), order=1)
 
+#Create a variable "mode" which is the fiber mode in the lenslet plane.
 llet = ot.square(sz, llet_w/rad_pix/llet_f)
 mode = llet * fib_angle
 fib_llet_loss = np.sum(mode**2)/np.sum(fib_angle**2)
 
 couplings1 = []
 couplings2 = []
+#Loop through all lenslet offsets (up to +/- half a lenslet) and input 
+#system focal ratios, computing coupling.
 for llet_offset in llet_offsets:
     for f_ratio in f_ratios:
         l_d_pix = f_ratio*wave/m_pix_llet 
@@ -109,12 +127,14 @@ for llet_offset in llet_offsets:
         couplings2.append(np.abs(np.sum(psf_fiber*fib_mode))**2/np.sum(np.abs(psf_fiber)**2)/np.sum(fib_mode**2)*llet_loss)
 
 #plt.clf()    
+couplings1 = np.array(couplings1).reshape(len(llet_offsets), len(f_ratios))
+couplings2 = np.array(couplings2).reshape(len(llet_offsets), len(f_ratios))
 
 print(np.mean(couplings1))
 
 #plt.plot(f_ratios,couplings1,label='Total Coupling')
 if plotit:
-    plt.plot(f_ratios,couplings2,label=label)
+    plt.plot(f_ratios,np.mean(couplings2, axis=1),label=label)
     plt.xlabel('Input focal ratio')
     plt.ylabel('Central Fiber Coupling')
     plt.axis([700,1650,0,.7])
