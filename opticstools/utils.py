@@ -144,7 +144,7 @@ def gauss(dim,width):
     beam = np.exp(-(rr/width)**2)
     return beam
     
-def hexagon(dim, width, interp_edge=False):
+def hexagon(dim, width, interp_edge=True):
     """This function creates a hexagon.
     
     Parameters
@@ -164,10 +164,17 @@ def hexagon(dim, width, interp_edge=False):
     xx = xy[1]
     yy = xy[0]
     hex = np.zeros((dim,dim))
+    scale=1.5
+    offset = 0.5
     if interp_edge:
         #!!! Note implemented yet. Need to compute the orthogonal distance 
         #from each line and accurately find fractional area of each pixel.
-        raise UserWarning
+        hex = np.minimum(np.maximum(width/2 - yy + offset,0),1) * \
+            np.minimum(np.maximum(width/2 + yy + offset,0),1) * \
+            np.minimum(np.maximum((width-np.sqrt(3)*xx - yy + offset)*scale,0),1) * \
+            np.minimum(np.maximum((width-np.sqrt(3)*xx + yy + offset)*scale,0),1) * \
+            np.minimum(np.maximum((width+np.sqrt(3)*xx - yy + offset)*scale,0),1) * \
+            np.minimum(np.maximum((width+np.sqrt(3)*xx + yy + offset)*scale,0),1)
     else:
         w = np.where( (yy < width/2) * (yy > (-width/2)) * \
          (yy < (width-np.sqrt(3)*xx)) * (yy > (-width+np.sqrt(3)*xx)) * \

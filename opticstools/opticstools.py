@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import special
 from scipy import optimize
-from .utils import *
+from utils import *
 try:
     import pyfftw
     pyfftw.interfaces.cache.enable()
