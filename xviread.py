@@ -40,15 +40,21 @@ def time_and_ims(fn):
 
 if __name__=="__main__":
     fn = '/Users/mireland/Google Drive/Harry PhD/testPicsCamera.xvi'
+    #fn = '/Users/mireland/Google Drive/Harry PhD/4100nm.xvi'  #90% null depth
+    #fn = '/Users/mireland/Google Drive/Harry PhD/4000nm.xvi' #50% null depth
+    #fn = '/Users/mireland/Google Drive/Harry PhD/4150nm.xvi' #90% null depth
+    #fn = '/Users/mireland/Google Drive/Harry PhD/4200nm.xvi'  #90% null depth
+    fn = '/Users/mireland/Google Drive/Harry PhD/4220nm.xvi'  #90% null depth
     tstart, ims = time_and_ims(fn)
     #Show how to create a mean subtracted image
     fluxes = np.sum(np.sum(ims,2),1)
     low_ix = np.where(fluxes < np.percentile(fluxes,40))[0]
     high_ix = np.where(fluxes > np.percentile(fluxes,60))[0]
     imsub = np.mean(ims[high_ix],axis=0) - np.mean(ims[low_ix],axis=0)
+    plt.figure(1)
     plt.clf()
     plt.imshow(imsub)
-    plt.imshow(np.arcsinh(imsub))
+    #plt.imshow(np.arcsinh(imsub))
     plt.title("Subtracted Image, arcsinh stretch")
     plt.show()
 
