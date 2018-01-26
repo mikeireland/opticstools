@@ -1,3 +1,12 @@
+"""
+To add: simulation of modulation and servo loop
+
+With synchronous demod at frequencies 2,3,5,7,8,9 with 4 samples/frequency, 
+a frame for processing is then 9*4=28 or if really needed 9*4*4=144 raw frames.
+This is 1.8 (or maybe 7.2 s) at 20Hz frame rate. 
+Sounds achievable and compatible with Aladin detector 1/f noise.
+"""
+
 from __future__ import division, print_function
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,7 +43,7 @@ def make_nuller_mat3():
     final_mat[4] = (initial_mat[1]/np.sqrt(2) - 1j*initial_mat[2])/np.sqrt(3)
     return final_mat
 
-def make_nuller_mat4(bracewell_design=True):
+def make_nuller_mat4(bracewell_design=True, ker_only=True, phase_shifters=[1,1,1]):
     """Make a nuller electric field matrix for a 3 telescope combiner
     
     Parameters
@@ -43,27 +52,52 @@ def make_nuller_mat4(bracewell_design=True):
         Do we use a Bracewell-like design? If not, then we use an 
         obvious symmetrical matrix. Harry can build a bracewell-like
         design.  
+        
+    ker_only: bool
+        Do we use kernel outputs only or all 9?
+        
+    phase_shifters: array-like
+        Three phasors to represent the on-chip phase modulation. For no
+        phase shift, these should be 1, and for 180 degrees they should 
+        be -1 (i.e. interferometric chopping)
     """
     #4x4 is nice and symmetric because you can get flux and visibilities
     #from 3 tri-couplers in the nulled channels.
     if bracewell_design:
-        initial_mat = np.array([[1,1,1,1],[1,1,-1,-1],[np.sqrt(2),-np.sqrt(2),0,0],[0,0,np.sqrt(2),-np.sqrt(2)]])
+        initial_mat = np.array([[1,1,1,1],[1,1,-1,-1],[np.sqrt(2),-np.sqrt(2),0,0],[0,0,np.sqrt(2),-np.sqrt(2)]], dtype=complex)
     else:
-        initial_mat = np.array([[1,1,1,1],[1,1,-1,-1],[1,-1,1,-1],[1,-1,-1,1]])
+        initial_mat = np.array([[1,1,1,1],[1,1,-1,-1],[1,-1,1,-1],[1,-1,-1,1]], dtype=complex)
+
+    #Add in the phase shifters
+    for ix,phasor in enumerate(phase_shifters):
+        initial_mat[1+ix] *= phasor
+
+    if ker_only:
+        #Now lets take the three nulled outputs, and put each of these into a 2x2-coupler.
+        final_mat = np.ones( (7,4), dtype=complex)
+        final_mat[1] = (initial_mat[1] + 1j*initial_mat[2])/2
+        final_mat[2] = (1j*initial_mat[1] + initial_mat[2])/2
+        
+        final_mat[3] = (initial_mat[1] + 1j*initial_mat[3])/2
+        final_mat[4] = (1j*initial_mat[1] + initial_mat[3])/2
+        
+        final_mat[5] = (initial_mat[2] + 1j*initial_mat[3])/2
+        final_mat[6] = (1j*initial_mat[2] + initial_mat[3])/2
+        
+    else:
+        #Now lets take the three nulled outputs, and put each of these into a tri-coupler.
+        final_mat = np.ones( (10,4), dtype=complex)
+        final_mat[1] = (initial_mat[1] + initial_mat[2])/np.sqrt(6)
+        final_mat[2] = (initial_mat[1] + initial_mat[2]*TRICOUPLER_PHASOR)/np.sqrt(6)
+        final_mat[3] = (initial_mat[1] + initial_mat[2]*np.conj(TRICOUPLER_PHASOR))/np.sqrt(6)
     
-    #Now lets take the three nulled outputs, and put each of these into a tri-coupler.
-    final_mat = np.ones( (10,4), dtype=complex)
-    final_mat[1] = (initial_mat[1] + initial_mat[2])/np.sqrt(6)
-    final_mat[2] = (initial_mat[1] + initial_mat[2]*TRICOUPLER_PHASOR)/np.sqrt(6)
-    final_mat[3] = (initial_mat[1] + initial_mat[2]*np.conj(TRICOUPLER_PHASOR))/np.sqrt(6)
+        final_mat[4] = (initial_mat[1] + initial_mat[3])/np.sqrt(6)
+        final_mat[5] = (initial_mat[1] + initial_mat[3]*TRICOUPLER_PHASOR)/np.sqrt(6)
+        final_mat[6] = (initial_mat[1] + initial_mat[3]*np.conj(TRICOUPLER_PHASOR))/np.sqrt(6)
     
-    final_mat[4] = (initial_mat[1] + initial_mat[3])/np.sqrt(6)
-    final_mat[5] = (initial_mat[1] + initial_mat[3]*TRICOUPLER_PHASOR)/np.sqrt(6)
-    final_mat[6] = (initial_mat[1] + initial_mat[3]*np.conj(TRICOUPLER_PHASOR))/np.sqrt(6)
-    
-    final_mat[7] = (initial_mat[2] + initial_mat[3])/np.sqrt(6)
-    final_mat[8] = (initial_mat[2] + initial_mat[3]*TRICOUPLER_PHASOR)/np.sqrt(6)
-    final_mat[9] = (initial_mat[2] + initial_mat[3]*np.conj(TRICOUPLER_PHASOR))/np.sqrt(6)
+        final_mat[7] = (initial_mat[2] + initial_mat[3])/np.sqrt(6)
+        final_mat[8] = (initial_mat[2] + initial_mat[3]*TRICOUPLER_PHASOR)/np.sqrt(6)
+        final_mat[9] = (initial_mat[2] + initial_mat[3]*np.conj(TRICOUPLER_PHASOR))/np.sqrt(6)
     return final_mat
     
 def make_nuller_mat_n(n=6):
@@ -78,6 +112,7 @@ def make_nuller_mat_n(n=6):
 if __name__=="__main__":
     #Start with a matrix that is all but the bright output of the 4 input coupler
     mat = make_nuller_mat4(bracewell_design=False)[1:]
+    
     #cov_elts is a list of either phases we want to be linearly independent of, or
     #pairs of phases we want to be independent of to 2nd order.
     #We can ignore one of the telescope phases here as a "reference" phase. 
@@ -122,7 +157,7 @@ if __name__=="__main__":
             
     U, W, V = np.linalg.svd(A_mat.T)
     #Kernel-output matrix...
-    K = np.transpose(U[:,len(W):])
+    K = np.transpose(U[:,sum(W>1e-10):])
     plt.clf()
     plt.plot(K.T)
     plt.plot(K.T,'o')

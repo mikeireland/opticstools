@@ -389,7 +389,7 @@ def kmf(sz, L_0=np.inf):
     """
     xy = np.meshgrid(np.arange(sz/2 + 1)/float(sz), (((np.arange(sz) + sz/2) % sz)-sz/2)/float(sz))
     dist2 = np.maximum( xy[1]**2 + xy[0]**2, 1e-12)
-    ft_wf = np.exp(2j * np.pi * np.random.random((sz,sz/2+1)))*dist2**(-11.0/12.0)*sz/15.81
+    ft_wf = np.exp(2j * np.pi * np.random.random((sz,sz//2+1)))*dist2**(-11.0/12.0)*sz/15.81
     ft_wf[0,0]=0
     return np.fft.irfft2(ft_wf)
 
