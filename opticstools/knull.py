@@ -13,7 +13,13 @@ plt.ion()
 import pdb
 
 PHI0 = np.exp(2j*np.pi/3) # phasor for tri-coupler
-#PHI0 = np.exp(1j)#*np.pi/2) # could be anything?
+#PHI0 = np.exp(1j)#*np.pi/2) # could be anything? No - coupler matrices must have 
+                             # orthogonal columns.
+
+#Some telescope arrays
+UTS = np.array([[-9.925,  14.887, 44.915, 103.306],  # VLTI
+                [-20.335, 30.502,  66.183,  44.999]]) # VLTI                     
+        
 # ==================================================================
 def make_nuller_mat3():
     """Make a nuller electric field matrix for a 3 telescope combiner"""
@@ -182,8 +188,144 @@ def incoherent_sum(mat, E_on, E_off, con):
 def make_nuller_mat_n(n=6):
     """Make a nuller matrix with N inputs. 
     
-    For odd n, one could start with 
+    For n>=4, one could start with 
     the van der mont matrix, then put each pair into a tri-coupler. This of 
     course gives more outputs than necessary for N>=5, but should be sufficient
     """
     return None
+
+# ==================================================================
+def make_lacour_mat():
+    """Make the matrix from Lacour et al (2014)
+    
+    There are 8 non-nulled outputs followed by 12 nulled outputs.
+    
+    There are many "kernel" quantities that can be derived from this.
+    However, some are meaningless, like A+C-B-D in each ABCD combiner.
+    """
+    tri_nuller = np.array([[PHI0**1, 1, PHI0**2],
+                          [-PHI0**2,-1, -PHI0**1]])/np.sqrt(3)
+    tri_nuller = tri_nuller.T
+    y_splitter = np.array([1,1])/np.sqrt(2)
+    abcd = np.array([[1,   1],
+                     [1,  1j],
+                     [1,  -1],
+                     [1, -1j]])/2.0
+    
+    #Start with the splitters
+    MM0 = np.zeros((8,4), dtype=complex)
+    MM0[0:2,0] = y_splitter
+    MM0[2:4,1] = y_splitter
+    MM0[4:6,2] = y_splitter
+    MM0[6:8,3] = y_splitter
+    
+    #Next the nullers
+    MM1 = np.zeros((11,8), dtype=complex)
+    MM1[0,0] = 1
+    MM1[1:4,1:3] = tri_nuller
+    MM1[4:7,3:5] = tri_nuller
+    MM1[7:10,5:7] = tri_nuller
+    MM1[-1,-1] = 1
+    
+    #Now the re-routing and splitting for ABCD
+    MM2 = np.zeros((14,11), dtype=complex)
+    #Flux 
+    MM2[0,0]=1
+    MM2[1,10]=1
+    #Fringe tracking 
+    MM2[2,1]=1
+    MM2[3,3]=1
+    MM2[4,4]=1            
+    MM2[5,6]=1
+    MM2[6,7]=1            
+    MM2[7,9]=1
+    #Nulled outputs... need splitting
+    #First, C(12-23)
+    MM2[8,2]=y_splitter[0]
+    MM2[9,5]=y_splitter[1]
+    #Next, C(12-34)
+    MM2[10,2]=y_splitter[0]
+    MM2[11,8]=y_splitter[1]
+    #Finally, C(23-34)
+    MM2[12,5]=y_splitter[0]
+    MM2[13,8]=y_splitter[1]
+    
+    #Finally, the ABCD
+    MM3 = np.zeros((20,14), dtype=complex)
+    ix = np.arange(8, dtype=int)
+    MM3[ix,ix] = 1
+    MM3[8:12,  8:10] = abcd
+    MM3[12:16,10:12] = abcd
+    MM3[16:20,12:14] = abcd
+
+    MM = MM3.dot(MM2.dot(MM1.dot(MM0)))
+
+    return MM
+    
+
+def response_random_pistons(mat, K, ntest=40000, rms_piston=50.0, \
+    con=0.0, off_axis=None, cwavel=3.6e-6):
+    """Record the response of the system to random pistons"""
+
+    if off_axis is None:
+        off_axis=np.zeros(mat.shape[1])
+
+    ntest = 10000
+
+    piston_record = [] # record of random pistons generated
+    output_record = [] # record of the output of the nuller+sensor matrix
+    kernel_record = [] # record of the kernel-output
+
+    for i in range(ntest):
+        pistons = np.random.randn(4) *  rms_piston     # atmospheric pistons in nanometers
+        piston_record.append(pistons)
+
+        E_on  = np.exp(-1j*2*np.pi/cwavel * pistons * 1e-9)
+        E_off = np.exp(-1j*2*np.pi/cwavel * (pistons * 1e-9 + off_axis))
+
+        output = incoherent_sum(mat, E_on, E_off, con)
+
+        output_record.append(output)
+        kernel_record.append(K.dot(output))
+
+    output_record = np.array(output_record)
+    kernel_record = np.array(kernel_record)
+    return output_record, kernel_record
+
+def lacour_response_random_pistons(mat, ntest=400, nsubsample=100, rms_piston=50.0, \
+    con=0.0, off_axis=None, cwavel=3.6e-6):
+    """Record the closure-phase response of the system to random pistons.
+    
+    Assume an incoherent sum of outputs for nsubsample integration times. """
+
+    if off_axis is None:
+        off_axis=np.zeros(mat.shape[1])
+
+    ntest = 10000
+
+    piston_record = [] # record of random pistons generated
+    output_record = [] # record of the output of the nuller+sensor matrix
+    closure_record = [] # record of the kernel-output
+
+    for i in range(ntest):
+        output=np.zeros(mat.shape[0])
+        for j in range(nsubsample):
+            pistons = np.random.randn(4) *  rms_piston     # atmospheric pistons in nanometers
+            piston_record.append(pistons)
+
+            E_on  = np.exp(-1j*2*np.pi/cwavel * pistons * 1e-9)
+            E_off = np.exp(-1j*2*np.pi/cwavel * (pistons * 1e-9 + off_axis))
+
+            output += incoherent_sum(mat, E_on, E_off, con)
+        #Now compute the closure-phase
+        vis1 = (output[0]-output[2]) + 1j*(output[1]-output[3])
+        vis2 = (output[4]-output[6]) - 1j*(output[5]-output[7])
+        vis3 = (output[8]-output[10]) + 1j*(output[9]-output[11])
+        
+        output_record.append(output)    
+        closure_record.append(np.angle(vis1*vis2*vis3))
+
+    output_record = np.array(output_record)
+    closure_record = np.array(closure_record)
+    return output_record, closure_record
+    
