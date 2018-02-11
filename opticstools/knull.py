@@ -47,7 +47,7 @@ def make_nuller_mat3():
 
 # ==================================================================
 def make_nuller_mat4(bracewell_design=True, ker_only=False,
-    phase_shifters=np.array([1,1,1], dtype=complex)):
+    phase_shifters=np.array([1,1,1], dtype=complex), ker_coupler_angle=np.pi/2):
     """Make a nuller electric field matrix for a 3 telescope combiner
     
     Parameters
@@ -64,15 +64,22 @@ def make_nuller_mat4(bracewell_design=True, ker_only=False,
         Three phasors to represent the on-chip phase modulation. For no
         phase shift, these should be 1, and for 180 degrees they should 
         be -1 (i.e. interferometric chopping)
+        
+    ker_coupler_angle: float
+        In the case of kernel outputs only, the final 50/50 couplers are defined by the 
+        one phase. See e.g. https://en.wikipedia.org/wiki/Unitary_matrix, setting theta
+        to pi/2 (50/50), and phase angle varphi_1 to 0. 
     """
     #4x4 is nice and symmetric because you can get flux and visibilities
     #from 3 tri-couplers in the nulled channels.
     if bracewell_design:
         sq2 = np.sqrt(2)
-        MM0 = 0.5 * np.array([[1,     1,   1,   1],
-                              [1,     1,  -1,  -1],
-                              [sq2, sq2,   0,   0],
-                              [0,     0, sq2, sq2]], dtype=complex)
+        #For a "Bracewell" design, each element has a 
+        #matrix 1/sq2 * np.array([[1,1],[1,-1]])
+        MM0 = 0.5 * np.array([[1,      1,   1,    1],
+                              [1,      1,  -1,   -1],
+                              [sq2, -sq2,   0,    0],
+                              [0,      0, sq2, -sq2]], dtype=complex)
     else:
         MM0 = 0.5 * np.array([[1, 1, 1, 1],
                               [1, 1,-1,-1],
@@ -84,19 +91,27 @@ def make_nuller_mat4(bracewell_design=True, ker_only=False,
         MM0[ix+1] *= phasor
 
     if ker_only:
+        MM1 = np.zeros( (7,4), dtype=complex)
+        #Start with the bright output.
+        MM1[0] = MM0[0]
+        
         #Now lets take the three nulled outputs, and put each of these into a 2x2-coupler.
-        MM1 = np.ones( (7,4), dtype=complex)
-        MM1[1] = (MM0[1] + 1j*MM0[2]) / 2
-        MM1[2] = (1j*MM0[1] + MM0[2]) / 2
+        PHI0 = np.exp(1j*ker_coupler_angle)
+        PHI1 = np.conj(PHI0)
         
-        MM1[3] = (MM0[1] + 1j*MM0[3]) / 2
-        MM1[4] = (1j*MM0[1] + MM0[3]) / 2
+        MM1[1] = (MM0[1] + PHI0*MM0[2]) / 2
+        MM1[2] = (-PHI1*MM0[1] + MM0[2]) / 2
         
-        MM1[5] = (MM0[2] + 1j*MM0[3]) / 2
-        MM1[6] = (1j*MM0[2] + MM0[3]) / 2
+        MM1[3] = (MM0[1] + PHI0*MM0[3]) / 2
+        MM1[4] = (-PHI1*MM0[1] + MM0[3]) / 2
+        
+        MM1[5] = (MM0[2] + PHI0*MM0[3]) / 2
+        MM1[6] = (-PHI1*MM0[2] + MM0[3]) / 2
     else:
         #Now lets take the three nulled outputs, and put each of these into a tri-coupler.
-        MM1 = np.ones( (10,4), dtype=complex)
+        MM1 = np.zeros( (10,4), dtype=complex)
+        MM1[0] = MM0[0]
+        
         MM1[1] = (MM0[1] + MM0[2] * PHI0**0) / np.sqrt(6)
         MM1[2] = (MM0[1] + MM0[2] * PHI0**1) / np.sqrt(6)
         MM1[3] = (MM0[1] + MM0[2] * PHI0**2) / np.sqrt(6)
@@ -115,9 +130,9 @@ def other_nuller_mat4(phasor=False):
     if phasor is False:
         phi1 = np.exp(2j*np.pi/3) # phasor for tri-coupler
     else:
-        phi1 = np.exp(j*phasor) # for a custom phase shift
+        phi1 = np.exp(1j*phasor) # for a custom phase shift
         
-    phi2 = np.conj(phi1)
+    phi2 = -np.conj(phi1) #!!!Warning - the minus sign here was added by Mike
 
     # this one is an explicit form of the matrix
     MM1 = (1.0 / (2 * np.sqrt(6))) * np.array(
@@ -132,13 +147,22 @@ def other_nuller_mat4(phasor=False):
          [1+phi2, -1+phi2, -1-phi2,  1-phi2]])
 
     # experiment: ditch out the rows with no phase shift
+#    MM1 = (1.0 / (2 * np.sqrt(2))) * np.array(
+#        [[1+phi1,  1-phi1, -1+phi1, -1-phi1],
+#         [1+phi2,  1-phi2, -1+phi2, -1-phi2],
+#         [1+phi1, -1-phi1,  1-phi1, -1+phi1],
+#         [1+phi2, -1-phi2,  1-phi2, -1+phi2],
+#         [1+phi1, -1+phi1, -1-phi1,  1-phi1],
+#         [1+phi2, -1+phi2, -1-phi2,  1-phi2]])
+    #!!!Mike - actually do this physically... with an on-paper 
+    #tedious matrix multiplication.
     MM1 = (1.0 / (2 * np.sqrt(2))) * np.array(
         [[1+phi1,  1-phi1, -1+phi1, -1-phi1],
-         [1+phi2,  1-phi2, -1+phi2, -1-phi2],
+         [1+phi2, -1+phi2,  1-phi2, -1-phi2],
+         [1+phi1,  1-phi1, -1-phi1, -1+phi1],
+         [1+phi2, -1+phi2, -1-phi2,  1-phi2],
          [1+phi1, -1-phi1,  1-phi1, -1+phi1],
-         [1+phi2, -1-phi2,  1-phi2, -1+phi2],
-         [1+phi1, -1+phi1, -1-phi1,  1-phi1],
-         [1+phi2, -1+phi2, -1-phi2,  1-phi2]])
+         [1+phi2, -1-phi2, -1+phi2,  1-phi2]])
 
     '''
     # this one is identical to the result of Mike's

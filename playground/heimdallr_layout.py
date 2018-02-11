@@ -16,6 +16,7 @@ if not '..' in sys.path:
     sys.path.insert(0,'..')
 import opticstools as ot
 import scipy.optimize as op
+import scipy.ndimage as nd
 
 BEAM_HEIGHT = 200. #In mm, GUESSED
 BEAM_SEP = 240.
@@ -23,6 +24,7 @@ BEAM_DIAM = 18.
 M1_F = 2500.
 M1_THETA = np.radians(6.0) #Angle of beam off M1, in radians.
 WAVE_SHORT = 1.48e-3    #Shortest wavelength in mm
+WAVE_LONG = 2.4e-3      #Longest wavelength in mm
 PIXEL_PITCH = 24e-3     #Pixel size in mm
 Z_M1 = 1000.0
 X_M3 = 1000.0
@@ -104,6 +106,7 @@ display_error("Minimum M2 beam x offset {0:6.3f}mm.".format(min_xoffset), min_xo
 
 
 #Plot...
+plt.figure(1)
 plt.clf()
 for i in range(NTEL):
     plt.plot([m1_xyz[i,0], m1_xyz[i,0], m2_xyz[i,0], m3_xyz[i,0], X_M3], \
@@ -115,3 +118,25 @@ plt.axis([1100,-200,0,1100])
 plt.axes().set_aspect('equal')
 plt.xlabel('X Axis')
 plt.ylabel('Z Axis')
+
+#Finally, lets make a pupil appropriate to a 64x64 subarray.
+sz = 64
+for wave, title, fignum in zip([WAVE_SHORT, WAVE_LONG], ['Shortest Wavelength', 'Longest Wavelength'], [3,5]):
+    mm_pix_pupil = wave*M1_F/(sz*PIXEL_PITCH)
+    p0 = ot.circle(sz, BEAM_DIAM/mm_pix_pupil)
+    pup = np.zeros_like(p0)
+    for ploc in PUPIL_LOCATIONS:
+        pup += nd.interpolation.shift(p0, ploc[::-1]/mm_pix_pupil, order=1)
+    pup = pup[::-1] #Now it is the intuitive way up.
+
+    plt.figure(2)
+    plt.clf()
+    plt.imshow(pup, extent=[-sz//2*mm_pix_pupil, sz//2*mm_pix_pupil, -sz//2*mm_pix_pupil,sz//2*mm_pix_pupil])
+    plt.xlabel('x offset (mm)')
+    plt.ylabel('y offset (mm)')
+    plt.title('Virtual pupil at M1 (1/4 size at M3)')
+
+    im_highsnr = np.fft.fftshift(np.abs(np.fft.fft2(pup))**2)
+    plt.figure(fignum)
+    plt.imshow(im_highsnr**.5, aspect='equal')
+    plt.title(title)
