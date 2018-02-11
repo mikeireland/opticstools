@@ -823,6 +823,24 @@ def nglass(l, glass='sio2'):
     elif (glass == 'ncaf2'):
         B = np.array([0.5675888, 0.4710914, 3.8484723])
         C = np.array([0.050263605,  0.1003909,  34.649040])**2
+    elif (glass == 'mgf2'):
+        B = np.array([0.48755108,0.39875031,2.3120353])
+        C = np.array([0.04338408,0.09461442,23.793604])**2
+    elif (glass == 'npk52a'):
+        B = np.array([1.02960700E+00,1.88050600E-01,7.36488165E-01])
+        C = np.array([5.16800155E-03,1.66658798E-02,1.38964129E+02])
+    elif (glass == 'psf67'):
+        B = np.array([1.97464225E+00,4.67095921E-01,2.43154209E+00])
+        C = np.array([1.45772324E-02,6.69790359E-02,1.57444895E+02])
+    elif (glass == 'npk51'):
+        B = np.array([1.15610775E+00,1.53229344E-01,7.85618966E-01])
+        C = np.array([5.85597402E-03,1.94072416E-02,1.40537046E+02])
+    elif (glass == 'nfk51a'):
+        B = np.array([9.71247817E-01,2.16901417E-01,9.04651666E-01])
+        C = np.array([4.72301995E-03,1.53575612E-02,1.68681330E+02])
+    elif (glass == 'si'): #https://refractiveindex.info/?shelf=main&book=Si&page=Salzberg
+        B = np.array([10.6684293,0.0030434748,1.54133408])
+        C = np.array([0.301516485,1.13475115,1104])**2
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning
@@ -830,6 +848,98 @@ def nglass(l, glass='sio2'):
     for i in range(len(B)):
             n += B[i]*l**2/(l**2 - C[i])
     return np.sqrt(n)
+
+#The following is directly from refractiveindex.info, and copied here because of
+#UTF-8 encoding that doesn't seem to work with my python 2.7 installation.
+#Author: Mikhail Polyanskiy
+#(Ciddor 1996, https://doi.org/10.1364/AO.35.001566)
+
+def Z(T,p,xw): #compressibility
+    t=T-273.15
+    a0 = 1.58123e-6   #K.Pa^-1
+    a1 = -2.9331e-8   #Pa^-1
+    a2 = 1.1043e-10   #K^-1.Pa^-1
+    b0 = 5.707e-6     #K.Pa^-1
+    b1 = -2.051e-8    #Pa^-1
+    c0 = 1.9898e-4    #K.Pa^-1
+    c1 = -2.376e-6    #Pa^-1
+    d  = 1.83e-11     #K^2.Pa^-2
+    e  = -0.765e-8    #K^2.Pa^-2
+    return 1-(p/T)*(a0+a1*t+a2*t**2+(b0+b1*t)*xw+(c0+c1*t)*xw**2) + (p/T)**2*(d+e*xw**2)
+
+
+def nm1_air(wave,t,p,h,xc):
+    # wave: wavelength, 0.3 to 1.69 mu m 
+    # t: temperature, -40 to +100 deg C
+    # p: pressure, 80000 to 120000 Pa
+    # h: fractional humidity, 0 to 1
+    # xc: CO2 concentration, 0 to 2000 ppm
+
+    sigma = 1/wave           #mu m^-1
+    
+    T= t + 273.15     #Temperature deg C -> K
+    
+    R = 8.314510      #gas constant, J/(mol.K)
+    
+    k0 = 238.0185     #mu m^-2
+    k1 = 5792105      #mu m^-2
+    k2 = 57.362       #mu m^-2
+    k3 = 167917       #mu m^-2
+ 
+    w0 = 295.235      #mu m^-2
+    w1 = 2.6422       #mu m^-2
+    w2 = -0.032380    #mu m^-4
+    w3 = 0.004028     #mu m^-6
+    
+    A = 1.2378847e-5  #K^-2
+    B = -1.9121316e-2 #K^-1
+    C = 33.93711047
+    D = -6.3431645e3  #K
+    
+    alpha = 1.00062
+    beta = 3.14e-8       #Pa^-1,
+    gamma = 5.6e-7        #deg C^-2
+
+    #saturation vapor pressure of water vapor in air at temperature T
+    if(t>=0):
+        svp = np.exp(A*T**2 + B*T + C + D/T) #Pa
+    else:
+        svp = 10**(-2663.5/T+12.537)
+    
+    #enhancement factor of water vapor in air
+    f = alpha + beta*p + gamma*t**2
+    
+    #molar fraction of water vapor in moist air
+    xw = f*h*svp/p
+    
+    #refractive index of standard air at 15 deg C, 101325 Pa, 0% humidity, 450 ppm CO2
+    nas = 1 + (k1/(k0-sigma**2)+k3/(k2-sigma**2))*1e-8
+    
+    #refractive index of standard air at 15 deg C, 101325 Pa, 0% humidity, xc ppm CO2
+    naxs = 1 + (nas-1) * (1+0.534e-6*(xc-450))
+    
+    #refractive index of water vapor at standard conditions (20 deg C, 1333 Pa)
+    nws = 1 + 1.022*(w0+w1*sigma**2+w2*sigma**4+w3*sigma**6)*1e-8
+    
+    Ma = 1e-3*(28.9635 + 12.011e-6*(xc-400)) #molar mass of dry air, kg/mol
+    Mw = 0.018015                            #molar mass of water vapor, kg/mol
+    
+    Za = Z(288.15, 101325, 0)                #compressibility of dry air
+    Zw = Z(293.15, 1333, 1)                  #compressibility of pure water vapor
+    
+    #Eq.4 with (T,P,xw) = (288.15, 101325, 0)
+    rhoaxs = 101325*Ma/(Za*R*288.15)           #density of standard air
+    
+    #Eq 4 with (T,P,xw) = (293.15, 1333, 1)
+    rhows  = 1333*Mw/(Zw*R*293.15)             #density of standard water vapor
+    
+    # two parts of Eq.4: rho=rhoa+rhow
+    rhoa   = p*Ma/(Z(T,p,xw)*R*T)*(1-xw)       #density of the dry component of the moist air    
+    rhow   = p*Mw/(Z(T,p,xw)*R*T)*xw           #density of the water vapor component
+    
+    nprop = (rhoa/rhoaxs)*(naxs-1) + (rhow/rhows)*(nws-1)
+    
+    return nprop
 
 class FresnelPropagator():
     """Propagate a wave by Fresnel diffraction"""
