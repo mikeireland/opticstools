@@ -156,7 +156,7 @@ def other_nuller_mat4(phasor=False):
 #         [1+phi2, -1+phi2, -1-phi2,  1-phi2]])
     #!!!Mike - actually do this physically... with an on-paper 
     #tedious matrix multiplication.
-    MM1 = (1.0 / (2 * np.sqrt(2))) * np.array(
+    MM1 = (1.0 / 4.0) * np.array(
         [[1+phi1,  1-phi1, -1+phi1, -1-phi1],
          [1+phi2, -1+phi2,  1-phi2, -1-phi2],
          [1+phi1,  1-phi1, -1-phi1, -1+phi1],
@@ -288,8 +288,15 @@ def make_lacour_mat():
     
 
 def response_random_pistons(mat, K, ntest=40000, rms_piston=50.0, \
-    con=0.0, off_axis=None, cwavel=3.6e-6):
-    """Record the response of the system to random pistons"""
+    con=0.0, off_axis=None, cwavel=3.6e-6, flux=np.inf, \
+    bflux=0, bflux_scale=0.5):
+    """Record the response of/6 the system to random pistons
+    
+    bflux_scale: float
+        The scaling of the flux per telescope to flux per output for the
+        background
+        Get this by e.g. np.mean(output_highphase)
+    """
 
     if off_axis is None:
         off_axis=np.zeros(mat.shape[1])
@@ -308,6 +315,9 @@ def response_random_pistons(mat, K, ntest=40000, rms_piston=50.0, \
         E_off = np.exp(-1j*2*np.pi/cwavel * (pistons * 1e-9 + off_axis))
 
         output = incoherent_sum(mat, E_on, E_off, con)
+
+        if flux != np.inf:
+            output = np.random.poisson(flux * output + bflux_scale*bflux)/float(flux)
 
         output_record.append(output)
         kernel_record.append(K.dot(output))

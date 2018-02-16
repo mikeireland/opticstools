@@ -13,11 +13,13 @@ from opticstools import knull
 diagonalise=True #Find the best kernel outputs...
 #Start with a matrix that is all but the bright output of the 4 input coupler
 lacour=False
-mat = knull.make_nuller_mat4(bracewell_design=False, ker_only=True)[1:]
+full_mat = knull.make_nuller_mat4(bracewell_design=False, ker_only=True)
+bout = full_mat[0]
+mat = full_mat[1:]
 
 #mat = knull.make_lacour_mat()
-mat = knull.make_lacour_mat()[8:] #Nulled outputs only.
-lacour=True
+#mat = knull.make_lacour_mat()[8:] #Nulled outputs only.
+#lacour=True
 
 #cov_elts is a list of either phases we want to be linearly independent of, or
 #pairs of phases we want to be independent of to 2nd order.
