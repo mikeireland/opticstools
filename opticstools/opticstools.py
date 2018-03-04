@@ -365,7 +365,7 @@ def diversity_mask(sz,m_per_pix,defocus=2.0):
     
 #--- End Masks ---
 
-def kmf(sz, L_0=np.inf):
+def kmf(sz, L_0=np.inf, r_0_pix=None):
     """This function creates a periodic wavefront produced by Kolmogorov turbulence. 
     It SHOULD normalised so that the variance at a distance of 1 pixel is 1 radian^2.
     To scale this to an r_0 of r_0_pix, multiply by sqrt(6.88*r_0_pix**(-5/3))
@@ -391,7 +391,10 @@ def kmf(sz, L_0=np.inf):
     dist2 = np.maximum( xy[1]**2 + xy[0]**2, 1e-12)
     ft_wf = np.exp(2j * np.pi * np.random.random((sz,sz//2+1)))*dist2**(-11.0/12.0)*sz/15.81
     ft_wf[0,0]=0
-    return np.fft.irfft2(ft_wf)
+    if r_0_pix is None:
+        return np.fft.irfft2(ft_wf)
+    else:
+        return np.fft.irfft2(ft_wf) * np.sqrt(6.88*r_0_pix**(-5/3.))
 
 def von_karman_structure(B, r_0=1.0, L_0=1e6):
     """The Von Karan structure function, from Conan et al 2000"""
@@ -941,7 +944,7 @@ def nm1_air(wave,t,p,h,xc):
     
     return nprop
 
-class FresnelPropagator():
+class FresnelPropagator(object):
     """Propagate a wave by Fresnel diffraction"""
     def __init__(self,sz,m_per_pix, d, wave,nthreads=nthreads):
         """Initiate this fresnel_propagator for a particular wavelength, 
@@ -994,3 +997,67 @@ class FresnelPropagator():
             g_ft = np.fft.fft2(wf)*self.h_ft
             wf_new = np.fft.ifft2(g_ft)
         return wf_new
+
+class FocusingLens(FresnelPropagator):
+    def __init__(self,sz,m_per_pix_pup, m_per_pix_im, f, wave,nthreads=nthreads):
+        """Use Fresnel Diffraction to come to focus. 
+    
+        We do this by creating a new lens of focal length mag * f, where mag is the 
+        magnification between pupil and image plane.
+        """
+        f_new=f * m_per_pix_pup/m_per_pix_im
+        
+        #Initialise the parent class.
+        super(FocusingLens, self).__init__(sz, m_per_pix_pup, f_new, wave,nthreads=nthreads)
+        #super(FresnelPropagator, self).__init__(m_per_pix_pup, f_new, wave,nthreads=nthreads)
+        #FresnelPropagator.__init__(self, sz,m_per_pix_pup, f_new, wave,nthreads=nthreads)
+
+        #Create our curved wavefront.
+        self.lens = curved_wf(sz, m_per_pix_pup, f_length=f_new, wave=wave)
+        self.sz=sz
+        
+    def focus(self, wf):
+        """Return a normalised image"""
+        if (wf.shape[0] != self.sz) or (wf.shape[1] != self.sz):
+            raise UserWarning("Incorrect Wavefront Shape!")
+        im = np.abs(self.propagate(wf*self.lens))**2
+        return im/np.sum(im)
+
+def focusing_propagator(sz, m_per_pix_pup, m_per_pix_im, f, wave):
+    """Create a propagator that propagates to focus, adjusting
+    the focal length for the new image scale using the thin lens formula.
+    
+    The new lens has a focal length of mag * f, where mag is the magnification.
+    
+    FIXME: Remove this if FocusingLens works.
+    
+    Returns
+    -------
+    lens: (sz,sz) numpy complex array
+        Multiply the final pupil by this prior to applying the propagator
+        
+    to_focus: FresnelPropagator
+        use np.abs(to_focus.propagate(wf*lens))**2 to create the image
+    """
+    #Create a new focal length that is longer according to the magnification.
+    f_new = f * m_per_pix_pup/m_per_pix_im
+    
+    #Create the curved wavefront.
+    lens = curved_wf(sz, m_per_pix_pup, f_length=f_new, wave=wave)
+    
+    #Create the propagator
+    to_focus = FresnelPropagator(sz,m_per_pix, f_new, wave)
+    
+    return lens, to_focus
+    
+class Base(object):
+    def __init__(self):
+        print("Base created")
+
+class ChildA(Base):
+    def __init__(self):
+        Base.__init__(self)
+
+class ChildB(Base):
+    def __init__(self):
+        super(ChildB, self).__init__()

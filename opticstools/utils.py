@@ -76,7 +76,7 @@ def create_movie(directory, image_format='jpg', fps=5, video_name='video.avi'):
     cv2.destroyAllWindows()
     video.release()
     
-def circle(dim,width):
+def circle(dim,width,interp_edge=False):
     """This function creates a circle.
     
     Parameters
@@ -95,7 +95,11 @@ def circle(dim,width):
     xy = np.meshgrid(x,x)
     xx = xy[1]
     yy = xy[0]
-    circle = ((xx**2+yy**2) < (width/2.0)**2).astype(float)
+    if interp_edge:
+        circle = np.sqrt((width/2.0)**2) - np.sqrt(xx**2+yy**2) + 0.5
+        circle = np.maximum(np.minimum(circle, 1),0)
+    else:
+        circle = ((xx**2+yy**2) < (width/2.0)**2).astype(float)
     return circle
     
 def square(dim, width):
