@@ -844,6 +844,12 @@ def nglass(l, glass='sio2'):
     elif (glass == 'si'): #https://refractiveindex.info/?shelf=main&book=Si&page=Salzberg
         B = np.array([10.6684293,0.0030434748,1.54133408])
         C = np.array([0.301516485,1.13475115,1104])**2
+    #elif (glass == 'zns'): #https://refractiveindex.info/?shelf=main&book=ZnS&page=Debenham
+    #    B = np.array([7.393, 0.14383, 4430.99])
+    #    C = np.array([0, 0.2421, 36.71])**2
+    elif (glass == 'znse'): #https://refractiveindex.info/?shelf=main&book=ZnSe&page=Connolly
+        B = np.array([4.45813734,0.467216334,2.89566290])
+        C = np.array([0.200859853,0.391371166,47.1362108])**2
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning

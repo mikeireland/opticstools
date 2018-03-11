@@ -43,7 +43,8 @@ t_air = 5.0 #InC
 p_air = 750e2 #In Pascals
 h_air = 0.0 #humidity: between 0 and 1
 xc_air = 400.
-glass = 'si'
+glass = 'si' 
+glass = 'znse' 
 delta = 175.0
 N_wn = 100
 wl_los=np.array([1.48,1.63,1.95,2.16])
@@ -100,6 +101,8 @@ for wl_lo, wl_hi in zip(wl_los, wl_his):
 plt.xlabel('Wavelength')
 plt.ylabel('Phase (radians)')
 plt.title('Fringe Phase at {0:5.1f}m of air path'.format(delta))
+
+print('Glass thickness: {:5.2f}mm'.format(best_x.x[1]*delta*1e3))
 
 #Original test plotting code
 if False:
