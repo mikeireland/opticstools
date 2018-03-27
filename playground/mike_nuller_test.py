@@ -47,6 +47,8 @@ A_mat = np.empty( (len(cov_elts), mat.shape[0]) )
 
 #We approximate in 2D the intensity as:
 #f(x,y) = a_x x + a_y y + b_xx x^2 + b_yy*y^2 + b_xy * xy
+#f(1,1) + f(-1,-1) - f(1,-1) - f(-1,1) = 4 b_xy
+#f(1,j) + f(-1,-j) - f(1,-j) - f(-1,j) = 4 j b_xy
 for ix, elt in enumerate(cov_elts):
     p1 = np.zeros(mat.shape[1], dtype=complex)
     p2 = np.zeros(mat.shape[1], dtype=complex)
