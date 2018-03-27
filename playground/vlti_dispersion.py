@@ -39,6 +39,7 @@ def v2_loss(x, wn, nm1_air, n_glass, wl_los=[1.48,1.63,1.95,2.16], wl_his=[1.63,
 
 #Air properties. Note that this formula isn't supposed to work at longer wavelengths
 #Then H or K.
+plot_extra=True
 t_air = 5.0 #InC
 p_air = 750e2 #In Pascals
 h_air = 0.0 #humidity: between 0 and 1
@@ -88,21 +89,61 @@ print(v2_loss(x0, wn, nm1_air, n_glass))
 best_x = op.minimize(v2_loss, x0, args=(wn, nm1_air, n_glass, wl_los, wl_his), tol=1e-8, method='Nelder-Mead') 
 print(v2_loss(best_x.x, wn, nm1_air, n_glass))
 
+wn = np.linspace(1/wl_his[3],1/wl_los[0],N_wn)
+
+wn = np.linspace(1/2.5,1/1.4,N_wn)
+nm1_air = ot.nm1_air(1./wn,t_air,p_air,h_air,xc_air)
+n_glass = ot.nglass(1./wn, glass=glass)
+
+
 phase = 2*np.pi*delta*1e6*(best_x.x[0]*(nm1_air+1.0) + best_x.x[1]*n_glass - 1.0)*wn
 fig1=plt.figure(1)
 fig1.clf()
 ax1 = fig1.add_subplot(111)
-ax1.plot(1/wn, phase-np.mean(phase))
-for wl_lo, wl_hi in zip(wl_los, wl_his):
-    ax1.add_patch(patches.Rectangle((wl_lo,-5), wl_hi-wl_lo, 10.0,alpha=0.1,edgecolor="grey"))
+ax1.plot(1/wn, phase-np.mean(phase), 'k', label='Phase')
+ax1.axis([1.4,2.5,-0.3,0.3])
+if not plot_extra:
+    for wl_lo, wl_hi in zip(wl_los, wl_his):
+        ax1.add_patch(patches.Rectangle((wl_lo,-5), wl_hi-wl_lo, 10.0,alpha=0.1,edgecolor="grey"))
 #Need to neaten this
 #plt.plot(1/wn[[25,50,75]], phase[[25,50,75]] - np.mean(phase),'o')
 
 plt.xlabel('Wavelength')
-plt.ylabel('Phase (radians)')
-plt.title('Fringe Phase at {0:5.1f}m of air path'.format(delta))
+plt.ylabel(r'Fringe Phase @ 175m Air Path (radians)')
+plt.ylabel(r'Fringe Phase (radians)')
+plt.title('{0:5.1f}m of air path and 2.3mm PWV'.format(delta))
 
 print('Glass thickness: {:5.2f}mm'.format(best_x.x[1]*delta*1e3))
+
+if plot_extra:
+    dir = '/Users/mireland/Google Drive/LE19_Heimdallr/Dewar Technical Documents/'
+    lfilt = 1400 + np.arange(2200)/2
+    d1 = np.loadtxt(dir + 'SmallDichroic1.csv', delimiter=',', skiprows=1)
+    d2 = np.loadtxt(dir + 'SmallDichroic2.csv', delimiter=',', skiprows=1)
+    d3 = np.loadtxt(dir + 'SmallDichroic3.csv', delimiter=',', skiprows=1)
+    d4 = np.loadtxt(dir + 'SmallDichroic4.csv', delimiter=',', skiprows=1)
+    filt = np.loadtxt(dir + 'SmallFilter.csv', delimiter=',', skiprows=1)
+    ldich = np.loadtxt(dir + 'LargeDichroic.csv', delimiter=',', skiprows=1)
+    atm = np.loadtxt(dir + 'cptrans_zm_23_10.dat')
+    d1f = np.interp(lfilt, d1[::-1,0], d1[::-1,1])/1e2
+    d2f = np.interp(lfilt, d2[::-1,0], d2[::-1,1])/1e2
+    d3f = np.interp(lfilt, d3[::-1,0], d3[::-1,1])/1e2
+    d4f = np.interp(lfilt, d4[::-1,0], d4[::-1,1])/1e2
+    filtf = np.interp(lfilt, filt[::-1,0], filt[::-1,1])/1e2
+    ldichf = np.interp(lfilt, ldich[::-1,0], ldich[::-1,1])/1e2
+    atmf = np.interp(lfilt, atm[:,0]*1e3, atm[:,1])
+    atmf = np.convolve(atmf, np.ones(9)/9, mode='same')
+    ax2 = ax1.twinx()
+    ax2.plot(lfilt/1e3, atmf*(1-ldichf)*filtf*(1-d1f)*(1-d2f)*(1-d3f), label='H1')
+    ax2.plot(lfilt/1e3, atmf*(1-ldichf)*filtf*(1-d1f)*(1-d2f)*d3f*(1-d4f), label='H2')
+    ax2.plot(lfilt/1e3, atmf*(1-ldichf)*filtf*(1-d1f)*d2f, label='K1')
+    ax2.plot(lfilt/1e3, atmf*(1-ldichf)*filtf*d1f, label='K2')
+    #ax2.plot(atm[:,0], np.convolve(atm[:,1], np.ones(41)/41, mode='same'), '--')
+    ax2.axis([1.4,2.5,0,1])
+    ax2.set_ylabel('Throughput')
+    fig1.tight_layout()
+    #ax1.legend(loc='lower right', framealpha=.95)
+    ax2.legend(loc='lower right', framealpha=.9)
 
 #Original test plotting code
 if False:

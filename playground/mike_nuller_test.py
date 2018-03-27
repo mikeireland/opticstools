@@ -13,7 +13,7 @@ from opticstools import knull
 diagonalise=True #Find the best kernel outputs...
 #Start with a matrix that is all but the bright output of the 4 input coupler
 lacour=False
-full_mat = knull.make_nuller_mat4(bracewell_design=False, ker_only=True)
+full_mat = knull.make_nuller_mat4(bracewell_design=False)#, ker_only=True)
 bout = full_mat[0]
 mat = full_mat[1:]
 
@@ -24,7 +24,8 @@ mat = full_mat[1:]
 #cov_elts is a list of either phases we want to be linearly independent of, or
 #pairs of phases we want to be independent of to 2nd order.
 #We can ignore one of the telescope phases here as a "reference" phase. 
-cov_elts = [[1,1],[2,2],[3,3],[1,2],[1,3],[2,3]]
+cov_elts = [[1,1j],[2,2j],[3,3j],[1j,1j],[2j,2j],[3j,3j],[1,1],[2,2],[3,3],[1,2],[1,3],[2,3],[1,2j]]
+#cov_elts = [[1,1],[2,2],[3,3],[1,2],[1,3],[2,3]]
 
 #For 3 telescopes...
 #mat = make_nuller_mat4()[1:] 
@@ -48,23 +49,25 @@ A_mat = np.empty( (len(cov_elts), mat.shape[0]) )
 #f(x,y) = a_x x + a_y y + b_xx x^2 + b_yy*y^2 + b_xy * xy
 for ix, elt in enumerate(cov_elts):
     p1 = np.zeros(mat.shape[1], dtype=complex)
-    p2 = np.zeros(mat.shape[1])
+    p2 = np.zeros(mat.shape[1], dtype=complex)
     if len(elt)==1:
-        p1[elt[0]] = dph
+        p1[int(np.abs(elt[0]))] = dph*elt[0]/np.abs(elt[0])
         A_mat[ix] = 0.5*(knull.odiff(mat, p1) - knull.odiff(mat, -p1))/dph
     elif elt[0]==elt[1]:
-        p1[elt[0]] = dph
+        p1[int(np.abs(elt[0]))] = dph*elt[0]/np.abs(elt[0])
         A_mat[ix] = 0.5*(knull.odiff(mat, p1) + knull.odiff(mat, -p1))/dph**2
     else:
-        p1[elt[0]] = dph
-        p1[elt[1]] = dph
-        p2[elt[0]] = dph
-        p2[elt[1]] = -dph        
+        p1[int(np.abs(elt[0]))] = dph*elt[0]/np.abs(elt[0])
+        p1[int(np.abs(elt[1]))] = dph*elt[1]/np.abs(elt[1])
+        p2[int(np.abs(elt[0]))] = dph*elt[0]/np.abs(elt[0])
+        p2[int(np.abs(elt[1]))] = -dph*elt[1]/np.abs(elt[1])       
         A_mat[ix] = 0.25*( knull.odiff(mat, p1) + knull.odiff(mat, -p1) \
             - knull.odiff(mat, p2) - knull.odiff(mat, -p2) )/dph**2
         
 U, W, V = np.linalg.svd(A_mat.T)
 #Kernel-output matrix...
+print(W)
+print(A_mat.shape)
 K = np.transpose(U[:,np.sum(W>1e-10):])
 
 if lacour:

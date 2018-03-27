@@ -109,6 +109,7 @@ def make_nuller_mat4(bracewell_design=True, ker_only=False,
         MM1[6] = (-PHI1*MM0[2] + MM0[3]) / 2
     else:
         #Now lets take the three nulled outputs, and put each of these into a tri-coupler.
+        PHI0 = np.exp(2j*np.pi/3)
         MM1 = np.zeros( (10,4), dtype=complex)
         MM1[0] = MM0[0]
         
