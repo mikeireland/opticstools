@@ -582,6 +582,9 @@ def mode_2d(V, r, j=0, n=0, sampling=0.3,  sz=1024):
         print("ERROR: this mode is not bound!")
         raise UserWarning
     
+    # Convert from float to be able to index
+    sz = int(sz)
+    
     ix = np.sum(n_per_j[0:unsigned_j]) + n
     U0 = u_all[ix]
     W0 = np.sqrt(V**2 - U0**2)
@@ -779,9 +782,11 @@ def compute_coupling(npix, dx, electric_field, lens_width, fibre_mode, x_offset,
     coupling: float
         The coupling between the fibre mode and the electric_field (Max 1)
     """
+    npix = int(npix)
+    
     # Crop the electric field to the central 1/4
-    low = npix/2 - int(lens_width / dx / 2) #* 3/8
-    upper = npix/2 + int(lens_width / dx / 2) #* 5/8
+    low = npix//2 - int(lens_width / dx / 2) #* 3/8
+    upper = npix//2 + int(lens_width / dx / 2) #* 5/8
     
     # Compute the fibre mode and shift (if required)
     fibre_mode = fibre_mode[(low + x_offset):(upper + x_offset), (low + y_offset):(upper + y_offset)]
