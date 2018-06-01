@@ -252,11 +252,11 @@ def regrid_fft(im,new_shape):
     TODO: This should work with an arbitrary number of dimensions
     """
     ftim = np.fft.rfft2(im)
-    new_ftim = np.zeros((new_shape[0], new_shape[1]/2 + 1),dtype='complex')
-    new_ftim[0:ftim.shape[0]/2,0:ftim.shape[1]] = \
-        ftim[0:ftim.shape[0]/2,0:ftim.shape[1]]
-    new_ftim[new_shape[0]-ftim.shape[0]/2:,0:ftim.shape[1]] = \
-        ftim[ftim.shape[0]/2:,0:ftim.shape[1]]
+    new_ftim = np.zeros((new_shape[0], new_shape[1]//2 + 1),dtype='complex')
+    new_ftim[0:ftim.shape[0]//2, 0:ftim.shape[1]] = \
+        ftim[0:ftim.shape[0]//2, 0:ftim.shape[1]]
+    new_ftim[new_shape[0]-ftim.shape[0]//2:, 0:ftim.shape[1]] = \
+        ftim[ftim.shape[0]//2:, 0:ftim.shape[1]]
     new_im = np.fft.irfft2(new_ftim)
     return new_im*( np.prod(new_shape)/np.prod(im.shape) )
     
