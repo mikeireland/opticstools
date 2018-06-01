@@ -850,6 +850,9 @@ def nglass(l, glass='sio2'):
     elif (glass == 'znse'): #https://refractiveindex.info/?shelf=main&book=ZnSe&page=Connolly
         B = np.array([4.45813734,0.467216334,2.89566290])
         C = np.array([0.200859853,0.391371166,47.1362108])**2
+    elif (glass == 'noa61'):
+        n = 1.5375 + 8290.45/(l*1000)**2 - 2.11046/(l*1000)**4
+        return n
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning
@@ -1067,3 +1070,23 @@ class ChildA(Base):
 class ChildB(Base):
     def __init__(self):
         super(ChildB, self).__init__()
+        
+def fresnel_reflection(n1, n2, theta=0):
+    """
+    Parameters
+    ----------
+    theta: float
+        incidence angle in degrees
+    
+    Returns 
+    -------
+    Rp: float
+        s (perpendicular) plane reflection
+    Rs: float
+        p (parallel) plane reflection
+    """
+    th = np.radians(theta)
+    sqrt_term = np.sqrt(1-(n1/n2*np.sin(th))**2)
+    Rs = (n1*np.cos(th) - n2*sqrt_term)**2/(n1*np.cos(th) + n2*sqrt_term)**2
+    Rp = (n1*sqrt_term - n2*np.cos(th))**2/(n1*sqrt_term + n2*np.cos(th))**2
+    return Rs, Rp
