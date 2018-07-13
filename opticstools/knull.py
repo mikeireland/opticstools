@@ -288,15 +288,22 @@ def make_lacour_mat():
     return MM
     
 
-def response_random_pistons(mat, K, ntest=40000, rms_piston=50.0, \
+def response_random_pistons(mat, K, ntest=100000, rms_piston=50.0, \
     con=0.0, off_axis=None, cwavel=3.6e-6, flux=np.inf, \
-    bflux=0, bflux_scale=0.5):
+    bflux=0, bflux_scale=0.5, rms_amp=0.01):
     """Record the response of/6 the system to random pistons
     
     bflux_scale: float
         The scaling of the flux per telescope to flux per output for the
         background
         Get this by e.g. np.mean(output_highphase)
+        
+    rms_piston: float
+        the RMS piston error
+        
+    rms_amp: float
+        The RMS amplitude error. 10% RMS for H-band is 2% RMS at 3.7 microns, or 
+        1% in electric field.
     """
 
     if off_axis is None:
@@ -311,9 +318,10 @@ def response_random_pistons(mat, K, ntest=40000, rms_piston=50.0, \
     for i in range(ntest):
         pistons = np.random.randn(4) *  rms_piston     # atmospheric pistons in nanometers
         piston_record.append(pistons)
+        amps = 1 + np.random.normal(4) * rms_amp
 
-        E_on  = np.exp(-1j*2*np.pi/cwavel * pistons * 1e-9)
-        E_off = np.exp(-1j*2*np.pi/cwavel * (pistons * 1e-9 + off_axis))
+        E_on  = amps*np.exp(-1j*2*np.pi/cwavel * pistons * 1e-9)
+        E_off = amps*np.exp(-1j*2*np.pi/cwavel * (pistons * 1e-9 + off_axis))
 
         output = incoherent_sum(mat, E_on, E_off, con)
 

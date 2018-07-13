@@ -35,7 +35,7 @@ NTEL=4
 NBL = NTEL*(NTEL-1)//2
 
 #Beam locations in the pupil.
-P_OFFSET = BEAM_DIAM*1.8
+P_OFFSET = BEAM_DIAM*1.9
 S32 = np.sqrt(3)/2
 PUPIL_LOCATIONS = [[-S32*P_OFFSET, -0.5*P_OFFSET], [S32*P_OFFSET, -0.5*P_OFFSET], [0,0], [0,P_OFFSET]]
 PUPIL_LOCATIONS  = np.array(PUPIL_LOCATIONS)
@@ -59,6 +59,10 @@ def lab_uv_coords(wave):
             uv_coords.append(dxy * scale)
     return uv_coords
             
+def pupil_uv_diam(wave):
+    """Find the pupil diameter in UV plane"""
+    scale = PIXEL_PITCH/wave/M1_F
+    return BEAM_DIAM*scale
 
 def path_resid(m2_z, m1_xyz, m2_xyz, m3_xyz, m1_m3_path, M1_THETA, return_m2=False):
     """Adjust m2 x and z to match the path length.
@@ -91,7 +95,7 @@ def assemble_pupil(sz, wave, delays=None, pistons=None, mm_pix_pupil=None, flip_
     """
     if mm_pix_pupil is None:
         mm_pix_pupil = wave*M1_F/(sz*PIXEL_PITCH)
-    p0 = ot.circle(sz, BEAM_DIAM/mm_pix_pupil, interp_edge=True)
+    p0 = ot.utils.circle(sz, BEAM_DIAM/mm_pix_pupil, interp_edge=True)
     pup = np.zeros_like(p0, dtype=complex)
     for i, ploc in enumerate(PUPIL_LOCATIONS):
         if delays is None:

@@ -11,6 +11,9 @@ import glob
 import numpy as np
 import pdb
 import matplotlib.pyplot as plt
+H = 6.626e-34 #Planck constant in SI
+C = 3e8 #Speed of light in m/s
+K_B = 1.38e-23 #Boltzmann constant in SI
 
 def from_arcsec(arcsec):
     return np.radians(arcsec/60.0/60.0)
@@ -18,6 +21,16 @@ def from_arcsec(arcsec):
 def to_arcsec(radians):
     return np.degrees(radians)*60.0*60.0
 
+def bb_photonrate(T, wave=None, nu=None, delta_wave=None, delta_nu=1.0):
+    """Find the photon rate in photons per spatial and temporal
+    bandwidth
+    """
+    if wave is not None:
+        nu = C/wave
+    if delta_wave is not None:
+        wave = C/nu
+        delta_nu = nu*delta_wave/wave
+    return delta_nu*2/(np.exp(H*nu/K_B/T)-1)
 
 def save_plot(data, title, directory, imagename, format='.jpg'):
     """
