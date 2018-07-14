@@ -318,7 +318,7 @@ def response_random_pistons(mat, K, ntest=100000, rms_piston=50.0, \
     for i in range(ntest):
         pistons = np.random.randn(4) *  rms_piston     # atmospheric pistons in nanometers
         piston_record.append(pistons)
-        amps = 1 + np.random.normal(4) * rms_amp
+        amps = 1 + np.random.normal(size=4) * rms_amp
 
         E_on  = amps*np.exp(-1j*2*np.pi/cwavel * pistons * 1e-9)
         E_off = amps*np.exp(-1j*2*np.pi/cwavel * (pistons * 1e-9 + off_axis))

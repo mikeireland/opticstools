@@ -24,7 +24,7 @@ mat = full_mat[1:]
 #cov_elts is a list of either phases we want to be linearly independent of, or
 #pairs of phases we want to be independent of to 2nd order.
 #We can ignore one of the telescope phases here as a "reference" phase. 
-cov_elts = [[1,1j],[2,2j],[3,3j],[1j,1j],[2j,2j],[3j,3j],[1,1],[2,2],[3,3],[1,2],[1,3],[2,3]]#,[1,2j]]
+cov_elts = [[1,1j],[2,2j],[3,3j],[1j,1j],[2j,2j],[3j,3j],[1,1],[2,2],[3,3],[1,2],[1,3],[2,3]] #,[1,2j]]
 #cov_elts = [[1,1],[2,2],[3,3],[1,2],[1,3],[2,3]]
 
 #For 3 telescopes...
@@ -71,6 +71,7 @@ U, W, V = np.linalg.svd(A_mat.T)
 print(W)
 print(A_mat.shape)
 K = np.transpose(U[:,np.sum(W>1e-10):])
+#pdb.set_trace()
 
 if lacour:
     old_K=K.copy()
@@ -124,14 +125,8 @@ if lacour:
 #To match the paper, make K larger by this factor:
 K *= np.sqrt(2)
 
-#Empirically, we have:
-#[[0.01,0.1,1.7e-6],
-# [0.1,0.1,1.7e-3],
-# [0.1,0.01,3.5e-4],
-# [0.1,0.2,3.2e-3],
-# [0.01,0.2,3.2e-3]]]
-rms_piston_rad = 0.3
-rms_amp = 0.2
+rms_piston_rad = 0.05
+rms_amp = 0.05
 output_highphase, kernel_highphase = knull.response_random_pistons(mat, K, rms_piston=10000., rms_amp=rms_amp)
 output_record, kernel_record = knull.response_random_pistons(mat, K, rms_piston=3600/2/np.pi*rms_piston_rad, rms_amp=rms_amp)
 knull.response_random_pistons(mat, K, rms_piston=10000.)
@@ -143,7 +138,7 @@ cubic_sub = np.sqrt(np.var(kernel_record, axis=0) - rms_piston_rad**6)
 print(cubic_sub)
 print(np.mean(cubic_sub))
 print("Kernel cross-term scaling: ")
-print(cubic_sub/rms_piston_rad**3/rms_amp)
+print(cubic_sub/rms_piston_rad/rms_amp)
 
 #Rather than normalising by looking at the response as a function of angle for a particular
 #telescope configuration, look at the response averaged over large piston offsets to 
