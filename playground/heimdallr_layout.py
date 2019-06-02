@@ -177,7 +177,7 @@ if __name__=="__main__":
         
         plt.figure(2)
         plt.clf()
-        plt.imshow(pup, extent=[-sz//2*mm_pix_pupil, sz//2*mm_pix_pupil, -sz//2*mm_pix_pupil,sz//2*mm_pix_pupil])
+        plt.imshow(np.abs(pup), extent=[-sz//2*mm_pix_pupil, sz//2*mm_pix_pupil, -sz//2*mm_pix_pupil,sz//2*mm_pix_pupil])
         plt.xlabel('x offset (mm)')
         plt.ylabel('y offset (mm)')
         plt.title('Virtual pupil at M1 (1/4 size at M3)')
