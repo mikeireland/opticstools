@@ -20,6 +20,24 @@ PHI0 = np.exp(2j*np.pi/3) # phasor for tri-coupler
 UTS = np.array([[-9.925,  14.887, 44.915, 103.306],  # VLTI
                 [-20.335, 30.502,  66.183,  44.999]]) # VLTI                     
         
+def guyon_nuller5():
+    """Create the Null stage for the Guyon Beamsplitter Nuller"""
+    initial_mat = np.zeros( (5,5) )
+    initial_mat[0,:2] = np.array([1,-1])*np.sqrt(1/2)
+    initial_mat[1,:3] = np.array([1,1,-2])*np.sqrt(2/3)/2
+    initial_mat[2,:4] = np.array([1,1,1,-3])*np.sqrt(3/4)/3
+    initial_mat[3,:] = np.array([1,1,1,1,-4])*np.sqrt(4/5)/4
+    initial_mat[4,:] = np.ones(5)*np.sqrt(1/5)
+    return initial_mat
+            
+def make_nuller_mat5():
+    """Create a 5x5 Nuller matrix"""
+    initial_mat = np.zeros( (5,5) )
+    for i in range(5):
+        initial_mat[i] = np.arange(5) * i
+    initial_mat = np.exp(2j*np.pi/5*initial_mat)
+    return initial_mat
+        
 # ==================================================================
 def make_nuller_mat3():
     """Make a nuller electric field matrix for a 3 telescope combiner"""

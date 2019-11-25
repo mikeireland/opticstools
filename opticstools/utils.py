@@ -184,7 +184,7 @@ def hexagon(dim, width, interp_edge=True):
     scale=1.5
     offset = 0.5
     if interp_edge:
-        #!!! Note implemented yet. Need to compute the orthogonal distance 
+        #!!! Not fully implemented yet. Need to compute the orthogonal distance 
         #from each line and accurately find fractional area of each pixel.
         hex = np.minimum(np.maximum(width/2 - yy + offset,0),1) * \
             np.minimum(np.maximum(width/2 + yy + offset,0),1) * \
