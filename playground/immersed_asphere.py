@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+plt.ion()
 
 #Thickness of glass in the center.
 glass_thickness = 3.0
@@ -55,3 +56,18 @@ plt.plot(-xs, zs,'b')
 plt.axis([-1.5,1.5,0,3])
 plt.xlabel('x (mm)')
 plt.ylabel('z (mm)')
+
+#Plot the sphere!
+roc = xs[10]/np.sin(th_gs[10])
+sphere_centre = glass_thickness - roc
+plt.plot(xs, sphere_centre + np.sqrt(roc**2 - xs**2),'r')
+plt.plot(-xs, sphere_centre + np.sqrt(roc**2 - xs**2),'r')
+
+#Example polynomial fitting
+pfit = np.polyfit(np.concatenate([-xs,xs]), np.concatenate([zs,zs]), 8)
+pfit[[1,3,5,7]]=0
+pfunc = np.poly1d(pfit)
+plt.plot(xs,pfunc(xs),'g')
+plt.plot(-xs,pfunc(xs),'g')
+#Format this better!
+print('Even Polynomial terms: ', pfit[[6,4,2,0]])
