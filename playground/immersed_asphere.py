@@ -3,16 +3,17 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 #Thickness of glass in the center.
-glass_thickness = 3.0
+glass_thickness = 2.08
+glass_thickness = 1.04
 
 #Refractive index of glass
-n_glass = 2.4
+n_glass = 2.41
 
 #Distance to focus (a finite conjugate system)
-d_focus = 100.0
+d_focus = 50.0
 
 #Numerical aperture in glass
-na_glass = 0.4
+na_glass = 0.45
 
 #Output angles, in glass.
 nx = 1000
@@ -50,7 +51,7 @@ for i in range(nx-1):
     zs.append(z)
 
 zs = np.array(zs)
-plt.clf()
+#plt.clf()
 plt.plot(xs, zs,'b')
 plt.plot(-xs, zs,'b')
 plt.axis([-1.5,1.5,0,3])

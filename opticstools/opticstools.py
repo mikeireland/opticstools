@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import special
 from scipy import optimize
-from utils import *
+from .utils import *
 try:
     import pyfftw
     pyfftw.interfaces.cache.enable()
@@ -20,6 +20,21 @@ try:
     nthreads=6 
 except:
     nthreads=0
+
+#On load, create a quick index of the first 100 Zernike polynomials, according to OSA/ANSI:
+MAX_ZERNIKE=105
+ZERNIKE_N = np.empty(MAX_ZERNIKE, dtype=int)
+ZERNIKE_M = np.empty(MAX_ZERNIKE, dtype=int)
+n=0
+m=0
+for z_ix in range(0,MAX_ZERNIKE):
+    ZERNIKE_N[z_ix] = n
+    ZERNIKE_M[z_ix] = m
+    if m==n:
+        n += 1
+        m = -n
+    else:
+        m += 2
 
 def azimuthalAverage(image, center=None, stddev=False, returnradii=False, return_nr=False, 
         binsize=0.5, weights=None, steps=False, interpnan=False, left=None, right=None, return_max=False):
@@ -230,6 +245,160 @@ def curved_wf(sz,m_per_pix,f_length=np.infty,wave=633e-9, tilt=[0.0,0.0], power=
     phase += tilt[1]*xy[1]*diam/sz/wave
 
     return np.exp(2j*np.pi*phase)
+
+def zernike(sz, coeffs=[0.,0.,0.], diam=None):
+    """A zernike wavefront centered on the *middle*
+    of the python array.
+    
+    Parameters
+    ----------
+    sz: int
+        Size of the wavefront in pixels
+    coeffs: float array
+        Zernike coefficients, starting with piston.
+    diam: float
+        Diameter for normalisation in pixels.      
+    """
+    x = np.arange(sz) - sz//2
+    xy = np.meshgrid(x,x)
+    if not diam:
+        diam=sz
+    rr = np.sqrt(xy[0]**2 + xy[1]**2)/(diam/2)
+    phi = np.arctan2(xy[0], xy[1])
+    n_coeff = len(coeffs)
+    phase = np.zeros((sz,sz))
+    #Loop over each zernike term.
+    for coeff,n,m_signed in zip(coeffs,ZERNIKE_N[:n_coeff], ZERNIKE_M[:n_coeff]):
+        m = np.abs(m_signed)
+        #Reset the term.
+        term = np.zeros((sz,sz))
+        
+        #The "+1" is to make an inclusive range.
+        for k in range(0,(n-m)//2+1):
+            term += (-1)**k * np.math.factorial(n-k) / np.math.factorial(k)/\
+                np.math.factorial((n+m)/2-k) / np.math.factorial((n-m)/2-k) *\
+                rr**(n-2*k)
+        if m_signed < 0:
+            term *= np.sin(m*phi)
+        if m_signed > 0:
+            term *= np.cos(m*phi)
+            
+        #Add to the phase
+        phase += term*coeff 
+
+    return phase
+
+def zernike_wf(sz, coeffs=[0.,0.,0.], diam=None):
+    """A zernike wavefront centered on the *middle*
+    of the python array. Amplitude of coefficients
+    normalised in radians.
+    
+    Parameters
+    ----------
+    sz: int
+        Size of the wavefront in pixels
+    coeffs: float array
+        Zernike coefficients, starting with piston.
+    diam: float
+        Diameter for normalisation in pixels.      
+    """
+    return np.exp(1j*zernike(sz, coeffs, diam))
+
+def zernike_amp(sz, coeffs=[0.,0.,0.], diam=None):
+    """A zernike based amplitude centered on the *middle*
+    of the python array.
+    
+    Parameters
+    ----------
+    sz: int
+        Size of the wavefront in pixels
+    coeffs: float array
+        Zernike coefficients, starting with piston.
+    diam: float
+        Diameter for normalisation in pixels.      
+    """
+    return np.exp(zernike(sz, coeffs, diam))
+
+def pd_images(foc_offsets=[0,0], xt_offsets = [0,0], yt_offsets = [0,0], 
+    phase_zernikes=[0,0,0,0], amp_zernikes = [0], outer_diam=200, inner_diam=0, \
+    stage_pos=[0,-10,10], radians_per_um=None, NA=0.58, wavelength=0.633, sz=512, \
+    fresnel_focal_length=None, um_per_pix=6.0):
+    """
+    Create a set of simulated phase diversity images. 
+    
+    Note that dimensions here are in microns.
+    
+    Parameters
+    ----------
+    foc_offsets: (n_images-1) numpy array
+        Focus offset in radians for the second and subsequent images
+    xt_offsets: (n_images-1) numpy array
+        X tilt offset
+    yt_offsets: (n_images-1) numpy array
+        Y tilt offset
+    phase_zernikes: numpy array
+        Zernike terms for phase, excluding piston.
+    amp_zernikes: numpy array
+        Zernike terms for amplitude, including overall normalisation.
+    outer_rad, inner_rad: float
+        Inner and outer radius of annular pupil in pixels. Note that a better
+        model would have a (slightly) variable pupil size as the focus changes.
+    radians_per_micron: float
+        Radians in focus term per micron of stage movement. This is
+        approximately 2*np.pi * NA^2 / wavelength.
+    stage_pos: (n_images) numpy array
+        Nominal stage position in microns.
+    fresnel_focal_length: float
+        Focal length in microns if we are in the Fresnel regime. If this is None, 
+        a Fraunhofer calculation will be made.
+    um_per_pix: float
+        If we are in the Fresnel regime, we need to define the pixel scale of the 
+        input pupil.
+    """
+    #Firstly, sort out focus, and tilt offsets. This focus offset is a little of a 
+    #guess...
+    if radians_per_um is None:
+        radians_per_um = np.pi*NA**2/wavelength
+    total_focus = np.array(stage_pos) * radians_per_um
+    total_focus[1:] += np.array(foc_offsets)
+    
+    #Add a zero (for ref image) to the tilt offsets
+    xt = np.concatenate([[0],xt_offsets])
+    yt = np.concatenate([[0],yt_offsets])
+    
+    #Create the amplitude zernike array. Normalise so that the
+    #image sum is zero for a evenly illuminated pupil (amplitude zernikes
+    #all 0).
+    pup_even = circle(sz, outer_diam, interp_edge=True) - \
+        circle(sz, inner_diam, interp_edge=True)
+    pup_even /= np.sqrt(np.sum(pup_even**2))*sz
+    pup = pup_even*zernike_amp(sz, amp_zernikes, diam=outer_diam)
+    
+    #Needed for the Fresnel calculation
+    flux_norm = np.sum(pup**2)/np.sum(pup_even**2)
+    
+    #Prepare for fresnel propagation if needed.
+    if fresnel_focal_length is not None:
+        lens = FocusingLens(sz, um_per_pix, um_per_pix, fresnel_focal_length, wavelength)
+        print("Using Fresnel propagation...")
+    
+    #Now iterate through the images at different foci.
+    n_ims = len(total_focus)
+    ims = np.zeros( (n_ims, sz, sz) )
+    for i in range(n_ims):
+        #Phase zernikes for this image
+        im_phase_zernikes = np.concatenate([[0.], phase_zernikes])
+        im_phase_zernikes[1] += xt[i]
+        im_phase_zernikes[2] += yt[i]
+        im_phase_zernikes[4] += total_focus[i]
+        wf = pup*zernike_wf(sz, im_phase_zernikes, diam=outer_diam)
+        if fresnel_focal_length is None:
+            ims[i] = np.fft.fftshift(np.abs(np.fft.fft2(wf))**2)
+        else:
+            #For a Fresnel propagation, we need to normalise separately,
+            #because the lens class was written with inbuilt normalisation.
+            ims[i] = lens.focus(wf) * flux_norm
+    return ims
 
 def fourier_wf(sz,xcyc_aperture,ycyc_aperture,amp,phase):
     """This function creates a phase aberration, centered on the
