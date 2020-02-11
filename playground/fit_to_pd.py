@@ -50,9 +50,9 @@ obstruction_frac=0.6
 #    phase_zernikes=[0,0, 0,7,0, 0,-8,8,0, 0,0,9,0,0], fresnel_focal_length=50000)
 
 #phase_zernikes = [-2.441,-0.709,   1.04,-3.21,-0.491,   0.072,2.47,-1.737,-0.481, -0.292,-0.216,9.981,-0.338,0.432, 0,0,0,0,0,0]
-phase_zernikes = [-2.528,-1.129,  1.099,-3.313,-0.317,     0.,1.981,-3.029,-0.663, -0.317,-0.194,10.93,-0.322,0.474, \
-                0.099,-0.129,0.082,0.252,-0.134,-0.117]
-amp_zernikes = [0.139,  -0.137,0.111,  -0.065,-0.744,0.036,   0.264,0.054,0.205,0.509]
+phase_zernikes = [-2.533,-1.144,  1.103,-3.29,-0.322,     0.003,1.984,-3.039,-0.668, -0.319,-0.189,10.959,-0.325,0.475, \
+                0.101,-0.126,0.067,0.239,-0.138,-0.114]
+amp_zernikes = [0.139,  -0.12,0.143,  -0.067,-0.757,0.029,   0.255,0.073,0.238,0.504, 0,0,0,0,0, 0,0,0,0,0,0]
 mod_ims = ot.pd_images(outer_diam=120.4, inner_diam=120.4*obstruction_frac, \
     phase_zernikes=phase_zernikes, stage_pos=stage_pos,\
     xt_offsets=[-0.49,-0.07], yt_offsets=[-2.6,-2.3], foc_offsets=[1.33,3.81], \
@@ -70,8 +70,8 @@ def fit_func(params, ims, NA, obstruction_frac, stage_pos, return_im=False):
     xt_offsets = params[n_ims-1:2*(n_ims-1)]
     yt_offsets = params[2*(n_ims-1):3*(n_ims-1)]
     outer_diam = params[3*(n_ims-1)]
-    amp_zernikes = params[3*(n_ims-1) + 1:3*(n_ims-1) + 11]
-    phase_zernikes = params[3*(n_ims-1) + 11:]
+    amp_zernikes = params[3*(n_ims-1) + 1:3*(n_ims-1) + 11 + 11] #Second set of 11 for full 5th order.
+    phase_zernikes = params[3*(n_ims-1) + 11 + 11:]
 #    phase_zernikes = params[3*(n_ims-1) + 1:]
 #    amp_zernikes = [0,0,0,0,0,0]
     mod_ims = ot.pd_images(foc_offsets=foc_offsets, xt_offsets=xt_offsets, yt_offsets=yt_offsets,\
@@ -115,7 +115,7 @@ plt.tight_layout()
 #focus, x, y offsets, and diameter, :7
 #amplitude parameters, 7:13
 #phase parameters, 13:
-params = [1.333,   3.813,  -0.49 ,  -0.072,  -2.599,  -2.322, 120.441]
+params = [0.811,   7.788,  -0.288,  -0.21 , -2.083, -3.143,120.992,]
 
 params = np.concatenate([params, amp_zernikes, phase_zernikes])
                   
