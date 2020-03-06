@@ -534,6 +534,18 @@ def diversity_mask(sz,m_per_pix,defocus=2.0):
     
 #--- End Masks ---
 
+def km1d(sz, r_0_pix=None):
+    """
+    Algorithm:
+        y(midpoint) = ( y(x1) + y(x2) )/2 + 0.4542*Z, where 
+            0.4542 = sqrt( 1 - 2^(5/3) / 2 )
+    """
+    if sz != 2**int(np.log2(sz)):
+        raise UserWarning("Size must be within a factor of 2")
+    #Temporary code.
+    wf = kmf(sz, r_0_pix=r_0_pix)
+    return wf[0]
+
 def kmf(sz, L_0=np.inf, r_0_pix=None):
     """This function creates a periodic wavefront produced by Kolmogorov turbulence. 
     It SHOULD normalised so that the variance at a distance of 1 pixel is 1 radian^2.
