@@ -561,12 +561,16 @@ def kmf(sz, L_0=np.inf, r_0_pix=None):
         
     l_0: (optional) float
         The von-Karmann outer scale. If not set, the structure function behaves with
-        an outer scale of approximately XXX
-    
+        an outer scale of approximately half (CHECK THIS!) pixels. 
+   
+    r_0_pix: (optional) float
+	The Fried r_0 parameter in units of pixels.
+ 
     Returns
     -------
     wavefront: float array (sz,sz)
-        2D array wavefront.
+        2D array wavefront, in units of radians. i.e. a complex electric field based
+        on this wavefront is np.exp(1j*kmf(sz))
     """
     xy = np.meshgrid(np.arange(sz/2 + 1)/float(sz), (((np.arange(sz) + sz/2) % sz)-sz/2)/float(sz))
     dist2 = np.maximum( xy[1]**2 + xy[0]**2, 1e-12)
