@@ -21,7 +21,14 @@ UTS = np.array([[-9.925,  14.887, 44.915, 103.306],  # VLTI
                 [-20.335, 30.502,  66.183,  44.999]]) # VLTI                     
         
 def guyon_nuller5():
-    """Create the Null stage for the Guyon Beamsplitter Nuller"""
+    """Create the Null stage for the Guyon Beamsplitter Nuller
+    
+    After the first stage, to obtain the even split, the next
+    stage is includes 0.5*initial_mat[3] then complex reflections
+    for the other components. 
+    
+    Symmetrical beamsplitters give phase independent of wavelength... I think.s
+    """
     initial_mat = np.zeros( (5,5) )
     initial_mat[0,:2] = np.array([1,-1])*np.sqrt(1/2)
     initial_mat[1,:3] = np.array([1,1,-2])*np.sqrt(2/3)/2
