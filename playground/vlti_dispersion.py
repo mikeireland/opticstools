@@ -1,5 +1,29 @@
 """Determine the ability for VLTI to have simultaneous near-infrared fringes in 
-several bandpasses"""
+several bandpasses
+
+#For K-band, by using delta/n_air_group of air to compensate for
+#delta vacuum delay, we have +/- pi radians of phase as a worst case.
+#This reduces visibility by 2/np.pi, which is significant but maybe not 
+#enough to justify atmospheric dispersion correction.
+
+dwn = wn[1:]-wn[:-1]
+cwn = cwn = 0.5*(wn[1:]+wn[:-1])
+dnm1 = (nm1_air[1:] - nm1_air[:-1])
+cnm1 = 0.5*(nm1_air[1:] + nm1_air[:-1])
+group_index = 1.0 + cnm1 + cwn*dnm1/dwn
+phase = 175e6*2*np.pi*cwn*(1-(1+cnm1)/group_index[22])
+plt.clf()
+plt.plot(1/cwn, phase - phase[22])
+plt.axis([1.95,2.35,-4,0.5])
+plt.xlabel('Wavelength (microns)')
+plt.ylabel('Phase (radians)')
+
+
+#Sensitivity at f/20 in 24 micron pixels.
+#wave = 1.9 + np.arange(61)/100
+#flux_mode = 2/(np.exp(6.626e-34*3e8/wave/1e-6/288/1.38e-23)-1)*3e8/2.2e-6*.01/2
+#flux_pixel = flux_mode * (24/2.3)**2 * np.pi*(1/40)**2
+"""
 
 from __future__ import division, print_function
 import numpy as np

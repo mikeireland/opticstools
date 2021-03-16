@@ -25,16 +25,22 @@ except:
 MAX_ZERNIKE=105
 ZERNIKE_N = np.empty(MAX_ZERNIKE, dtype=int)
 ZERNIKE_M = np.empty(MAX_ZERNIKE, dtype=int)
+ZERNIKE_NORM = np.ones(MAX_ZERNIKE)
 n=0
 m=0
 for z_ix in range(0,MAX_ZERNIKE):
     ZERNIKE_N[z_ix] = n
     ZERNIKE_M[z_ix] = m
+    if m==0:
+        ZERNIKE_NORM[z_ix] = np.sqrt(n+1)
+    else:
+        ZERNIKE_NORM[z_ix] = np.sqrt(2*(n+1))
     if m==n:
         n += 1
         m = -n
     else:
         m += 2
+
 
 def azimuthalAverage(image, center=None, stddev=False, returnradii=False, return_nr=False, 
         binsize=0.5, weights=None, steps=False, interpnan=False, left=None, right=None, return_max=False):
@@ -246,7 +252,7 @@ def curved_wf(sz,m_per_pix,f_length=np.infty,wave=633e-9, tilt=[0.0,0.0], power=
 
     return np.exp(2j*np.pi*phase)
 
-def zernike(sz, coeffs=[0.,0.,0.], diam=None):
+def zernike(sz, coeffs=[0.,0.,0.], diam=None, rms_norm=False):
     """A zernike wavefront centered on the *middle*
     of the python array.
     
@@ -268,7 +274,7 @@ def zernike(sz, coeffs=[0.,0.,0.], diam=None):
     n_coeff = len(coeffs)
     phase = np.zeros((sz,sz))
     #Loop over each zernike term.
-    for coeff,n,m_signed in zip(coeffs,ZERNIKE_N[:n_coeff], ZERNIKE_M[:n_coeff]):
+    for coeff,n,m_signed,norm in zip(coeffs,ZERNIKE_N[:n_coeff], ZERNIKE_M[:n_coeff], ZERNIKE_NORM[:n_coeff]):
         m = np.abs(m_signed)
         #Reset the term.
         term = np.zeros((sz,sz))
@@ -284,11 +290,14 @@ def zernike(sz, coeffs=[0.,0.,0.], diam=None):
             term *= np.cos(m*phi)
             
         #Add to the phase
-        phase += term*coeff 
+        if rms_norm:
+            phase += term*coeff*norm
+        else:
+            phase += term*coeff
 
     return phase
 
-def zernike_wf(sz, coeffs=[0.,0.,0.], diam=None):
+def zernike_wf(sz, coeffs=[0.,0.,0.], diam=None, rms_norm=False):
     """A zernike wavefront centered on the *middle*
     of the python array. Amplitude of coefficients
     normalised in radians.
@@ -302,9 +311,9 @@ def zernike_wf(sz, coeffs=[0.,0.,0.], diam=None):
     diam: float
         Diameter for normalisation in pixels.      
     """
-    return np.exp(1j*zernike(sz, coeffs, diam))
+    return np.exp(1j*zernike(sz, coeffs, diam, rms_norm))
 
-def zernike_amp(sz, coeffs=[0.,0.,0.], diam=None):
+def zernike_amp(sz, coeffs=[0.,0.,0.], diam=None, rms_norm=False):
     """A zernike based amplitude centered on the *middle*
     of the python array.
     
@@ -317,7 +326,7 @@ def zernike_amp(sz, coeffs=[0.,0.,0.], diam=None):
     diam: float
         Diameter for normalisation in pixels.      
     """
-    return np.exp(zernike(sz, coeffs, diam))
+    return np.exp(zernike(sz, coeffs, diam, rms_norm))
 
 def pd_images(foc_offsets=[0,0], xt_offsets = [0,0], yt_offsets = [0,0], 
     phase_zernikes=[0,0,0,0], amp_zernikes = [0], outer_diam=200, inner_diam=0, \

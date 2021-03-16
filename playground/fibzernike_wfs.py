@@ -35,7 +35,7 @@ x_frac = 2*x/diam
 xy = np.meshgrid(x,x)
 rr = np.sqrt(xy[0]**2 + xy[1]**2)
 
-#Create a Gaussian beam
+#Create a Gaussian beam as an approximation for a fiber mode.
 sig = psf_diam/2.35*0.75
 gg = np.exp(-(rr/2/sig)**2)
 gg /= np.sqrt(np.sum(gg**2))
@@ -44,7 +44,7 @@ gg /= np.sqrt(np.sum(gg**2))
 pup_outer = ot.utils.circle(sz,diam)
 rpup = pup_outer - ot.utils.circle(sz,obst)
 lyot_outer = ot.utils.circle(sz,diam*2)
-pup = rpup*ot.zernike_wf(sz, coeffs=[0, .5,0, 0,0,0, 0], diam=diam)
+pup = rpup*ot.zernike_wf(sz, coeffs=[0, 0,0, 0,0,0, 0], diam=diam)
 
 #Create the image electric field.
 im_E = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(pup)))
@@ -55,7 +55,7 @@ im_E = im_E*(1-ot.circle(512,width, interp_edge=True))+ 1j*im_E*ot.circle(512,wi
 rim_E = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(rpup)))
 rim_E = rim_E*(1-ot.circle(512,width, interp_edge=True))+ 1j*rim_E*ot.circle(512,width, interp_edge=True)*np.sqrt(reflectivity)
 
-#Remove the on-axis Gaussian component. 
+#Calculate the coupling to the fiber.
 coupling = np.sum(im_E_orig*ot.circle(512,width, interp_edge=True)*np.conj(gg))*np.sqrt(1-reflectivity)/np.sqrt(np.sum(im_E_orig**2))
 print("Coupling: {:.2f}".format(np.abs(coupling)**2))
 
@@ -86,3 +86,6 @@ im_outer = np.fft.fftshift(np.abs(np.fft.fft2(np.fft.fftshift(pup_lyot*(1-pup_ou
 plt.figure(2)
 plt.clf()
 plt.imshow(im_outer[sz//2-20:sz//2+20,sz//2-20:sz//2+20])
+
+plt.figure(4)
+plt.imshow(np.abs(pup_lyot))
