@@ -38,6 +38,7 @@ wl = 2.2e-3
 
 sz = 512
 
+#Comment out one of the blocks below.
 #AT
 subap_diam = 450.
 tel_diam = 1800.
