@@ -15,7 +15,7 @@ r_0 = 0.98*.5e-6/np.radians(0.86/3600)  #Visible fried parameter in m.
 wave = 0.5e-6                           #Wavelength that this parameter applies at.
 v_mn = 9.4                              #9.4 for median seeing. Actually vbar
 Bs = np.array([[130.,0], [0,130.]])     #2-dimensional baselines in m
-diam = 8                                #telescope diameter in m
+diam = 0.4                                #telescope diameter in m
 
 #Labels...
 labels = [r'$B \parallel v$', r'$B \perp v$']
