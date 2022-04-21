@@ -6,12 +6,15 @@ if not '..' in sys.path:
 import opticstools as ot
     
 eta_w = 0.2 #VLTI efficiency at K
+eta_c = 0.1 #Gravity efficiency.
 diam = 1.8
 strehl = 0.7
 seeing = 0.7
 sep = 0.48
+tint = 60*80
 
-#Photon rate for target and background after the warm optics
+#Photon rate for target and background after the warm optics. 
+#4.31e9 comes from Allen's astrophysical quantities
 photons_s_B = eta_w*strehl*np.pi*(diam/2)**2*4.31e9*.4*10**(-10*0.4)
 bg_phot = 2*3e8/2.2e-6*.4/2.2/(np.exp(6.626e-34*3e8/2.2e-6/1.38e-23/290)-1)
 
@@ -32,3 +35,5 @@ photons_s_A = eta_w*strehl*np.pi*(diam/2)**2*4.31e9*.4*10**(2.45*0.4)*(frac_coup
 
 print('Photon rate from Mira B, Mira A and Background: {:1e} {:.1e} {:.1e}'.format(photons_s_B, photons_s_A, bg_phot))
 print('SNR decrease due to A: {:1f}'.format(np.sqrt(photons_s_A/photons_s_B)))
+snr = np.sqrt(tint)*photons_s_B/np.sqrt(photons_s_A)*np.sqrt((2.4/.4)/4000)
+print('SNR at R=4000 in {:d}s: {:.1f}'.format(tint, snr))

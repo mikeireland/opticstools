@@ -1052,6 +1052,15 @@ def nglass(l, glass='sio2'):
     elif (glass == 'noa61'):
         n = 1.5375 + 8290.45/(l*1000)**2 - 2.11046/(l*1000)**4
         return n
+    elif (glass == 'su8'):
+        n = 1.5525 + 0.00629/l**2 + 0.0004/l**4
+        return n
+    elif (glass == 'epocore'):
+        n = 1.572 + 0.0076/l**2 + 0.00046/l**4
+        return n
+    elif (glass == 'epoclad'):
+        n = 1.560 + 0.0073/l**2 + 0.00038/l**4
+        return n
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning
