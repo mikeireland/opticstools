@@ -39,12 +39,15 @@ if not '..' in sys.path:
 import opticstools as ot
 import scipy.optimize as op
 
-def v2_loss(x, wn, nm1_air, n_glass, wl_los=[1.48,1.63,1.95,2.16], wl_his=[1.63,1.81,2.16,2.40], n_sub=4):
+def vis_loss(x, wn, nm1_air, n_glass, wl_los=[1.48,1.63,1.95,2.16], wl_his=[1.63,1.81,2.16,2.40], n_sub=4):
     """Find the approximate loss in V^2 in the quadratic
-    approximation per m of vacuum
+    approximation per 100m of vacuum
     
     FIXME: comment and add defaults"""
-    phase = 2*np.pi*1e6*(x[0]*nm1_air + x[1]*n_glass + (x[0] - 1.0))*wn
+    if len(x)>1:
+        phase = 2*np.pi*1e6*(x[0]*nm1_air + x[1]*n_glass + (x[0] - 1.0))*wn
+    else:
+        phase = 2*np.pi*1e6*(x[0]*nm1_air + (x[0] - 1.0))*wn
     N_wn = len(wn)
     if wl_los is None:
         ix_los = N_wn//n_sub*np.arange(n_sub)
@@ -54,23 +57,22 @@ def v2_loss(x, wn, nm1_air, n_glass, wl_los=[1.48,1.63,1.95,2.16], wl_his=[1.63,
         #slightly confusing.
         ix_his = [np.where(1./wn <= wl_lo)[0][0] for wl_lo in wl_los][::-1]
         ix_los = [np.where(1./wn <= wl_hi)[0][0] for wl_hi in wl_his][::-1]
-    rms = 0.
+    mnsq = 0.
     for ix_lo,ix_hi in zip(ix_los, ix_his):
         phase_sub = phase[ix_lo:ix_hi]
-        rms += np.var(phase_sub)
-    rms = np.sqrt(rms/n_sub)
-    return rms
+        mnsq += np.var(phase_sub)
+    return 100**2*mnsq/n_sub
 
 #Air properties. Note that this formula isn't supposed to work at longer wavelengths
 #Then H or K.
-plot_extra=True
+plot_extra=False
 t_air = 5.0 #InC
 p_air = 750e2 #In Pascals
 h_air = 0.0 #humidity: between 0 and 1
 xc_air = 400.
 glass = 'si' 
 glass = 'znse' 
-delta = 175.0
+delta = 100.0
 N_wn = 100
 wl_los=np.array([1.48,1.63,1.95,2.16])
 wl_his=np.array([1.63,1.81,2.16,2.40])
@@ -108,10 +110,10 @@ x_matsolve = np.linalg.solve(b_arrs, x0s)
 #Unfortunately, that was just a guess. Now we need a least-squares about this
 #to optimise the amount of glass
 x0 = x_matsolve[N_wn//2]
-print(v2_loss(x0, wn, nm1_air, n_glass))
-#best_x = op.minimize(v2_loss, x0, args=(wn, nm1_air, n_glass), options={'eps':1e-13, 'gtol':1e-4}, tol=1e-6, method='bfgs')
-best_x = op.minimize(v2_loss, x0, args=(wn, nm1_air, n_glass, wl_los, wl_his), tol=1e-8, method='Nelder-Mead') 
-print(v2_loss(best_x.x, wn, nm1_air, n_glass))
+print(vis_loss(x0, wn, nm1_air, n_glass))
+#best_x = op.minimize(vis_loss, x0, args=(wn, nm1_air, n_glass), options={'eps':1e-13, 'gtol':1e-4}, tol=1e-6, method='bfgs')
+best_x = op.minimize(vis_loss, x0, args=(wn, nm1_air, n_glass, wl_los, wl_his), tol=1e-8, method='Nelder-Mead') 
+print(vis_loss(best_x.x, wn, nm1_air, n_glass))
 
 wn = np.linspace(1/wl_his[3],1/wl_los[0],N_wn)
 
@@ -133,11 +135,28 @@ if not plot_extra:
 #plt.plot(1/wn[[25,50,75]], phase[[25,50,75]] - np.mean(phase),'o')
 
 plt.xlabel('Wavelength')
-plt.ylabel(r'Fringe Phase @ 175m Air Path (radians)')
 plt.ylabel(r'Fringe Phase (radians)')
 plt.title('{0:5.1f}m of air path and 2.3mm PWV'.format(delta))
 
 print('Glass thickness: {:5.2f}mm'.format(best_x.x[1]*delta*1e3))
+
+#Now for K only
+wl_los_k=np.array([1.95,2.16])
+wl_his_k=np.array([2.16,2.40])
+best_x_k = op.minimize(vis_loss, [1.0], args=(wn, nm1_air, n_glass, wl_los_k, wl_his_k), tol=1e-8, method='Nelder-Mead') 
+print(vis_loss(best_x_k.x, wn, nm1_air, n_glass,wl_los_k, wl_his_k))
+phase_k = 2*np.pi*delta*1e6*(best_x_k.x[0]*(nm1_air+1.0) - 1.0)*wn
+fig2=plt.figure(2)
+fig2.clf()
+ax2 = fig2.add_subplot(111)
+ax2.plot(1/wn, phase_k-np.min(phase_k)-2, 'k', label='Phase')
+ax2.axis([1.6,2.5,-3,20])
+plt.xlabel('Wavelength')
+plt.ylabel(r'Fringe Phase (radians)')
+plt.title('{0:5.1f}m of air path and 2.3mm PWV'.format(delta))
+if not plot_extra:
+    for wl_lo, wl_hi in zip(wl_los_k, wl_his_k):
+        ax2.add_patch(patches.Rectangle((wl_lo,-5), wl_hi-wl_lo, 10.0,alpha=0.1,edgecolor="grey"))
 
 if plot_extra:
     dir = '/Users/mireland/Google Drive/LE19_Heimdallr/Dewar Technical Documents/'
