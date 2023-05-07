@@ -710,8 +710,13 @@ def join_bessel(U,V,j):
     return U*special.jn(j+1,U)*special.kn(j,W) - W*special.kn(j+1,W)*special.jn(j,U)
     
 def neff(V, accurate_roots=True):
-    """For a cylindrical fiber, find the effective indices of all modes for a given value 
-    of the fiber V number. 
+    """For a cylindrical fiber, find the roots of U, which result in the 
+    effective indices of all modes for a given value of the fiber V number. 
+    
+    To calcluate n_eff, use
+    n_eff = np.sqrt(n_co**2 - U**2 * lambda**2/r_core**2/4/np.pi**2 )
+    
+    If U=V, then n_eff=n_cl
     
     Parameters
     ----------
@@ -1049,6 +1054,9 @@ def nglass(l, glass='sio2'):
     elif (glass == 'znse'): #https://refractiveindex.info/?shelf=main&book=ZnSe&page=Connolly
         B = np.array([4.45813734,0.467216334,2.89566290])
         C = np.array([0.200859853,0.391371166,47.1362108])**2
+    elif (glass == 'CdTe'): #https://refractiveindex.info/?shelf=main&book=CdTe&page=DeBell-80K
+        B = np.array([6.0756642,2.8743304])
+        C = np.array([0.1053945,4773.944])
     elif (glass == 'noa61'):
         n = 1.5375 + 8290.45/(l*1000)**2 - 2.11046/(l*1000)**4
         return n

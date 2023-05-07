@@ -29,18 +29,23 @@ pdiam = 18 * f2/f1
 d_dm_oap2 = 2.88 + 3/1.4 + 308.12
 d_oap2_sph = 850 + 1300
 fsph = 4793/2
-f_extra_sph = 200
 
-d_narcissis_implane = 150
+#Free parameter! Focal length of the additional lens or spherical mirror.
+f_extra_sph = 155
+
+d_narcissis_implane = 75 #100
 d_cstop_implane = 39
+
+#focal ratio of the cold stop - for plotting only.
 f_rat_coldstop = 20
+
+#beam separation - determines the target focal ratio, so a critical parameter!
+beam_sep_deg = 0.96
 
 dx = 0.05
 sz = 2048
 newsz = 512
 wave = 2.4e-3 #in mm!
-
-beam_sep_deg = 0.96
 #-----
 target_frat = 2/np.radians(beam_sep_deg)
 #Thin lens formula for virtual position of pupil with respect to OAP2

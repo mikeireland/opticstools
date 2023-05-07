@@ -46,6 +46,7 @@ plt.ion()
 if not '..' in sys.path:
     sys.path.insert(0,'..')
 import opticstools as ot
+import scipy.ndimage as nd
 
 #Constants. At kReflectivity=1, we get a minimum 7 radians RMS per 1/sqrt(photons), 
 #Compared to 9.5 radians RMS at kReflectivity=0.25
@@ -57,7 +58,7 @@ kDiam = 24
 kObst = 3
 kPsf_diam = kSz/kDiam
 
-kWidth= kPsf_diam * 1.4#10# 8.5
+kWidth= kPsf_diam * 1.6#10# 8.5
 
 #calculations based on these constants.
 pup_outer = ot.utils.circle(kSz,kDiam)
@@ -95,7 +96,6 @@ def wfs_Idiff(zernikes):
     im_E = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(pup)))
     im_E = im_E*(1-ot.circle(kSz, kWidth, interp_edge=True))+ 1j*im_E*ot.circle(kSz,kWidth, interp_edge=True)*np.sqrt(kReflectivity)
 
-
     #Now for the "Lyot" stop
     pup_lyot = np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(im_E)))
     pup_lyot_I = np.abs(pup_lyot)**2/pflux_norm
@@ -105,25 +105,26 @@ def wfs_Idiff(zernikes):
     im_outer = np.fft.fftshift(np.abs(np.fft.fft2(np.fft.fftshift(pup_lyot*(1-pup_outer)*lyot_outer)))**2)/iflux_norm
     im_outer_diff = im_outer - rim_outer
     
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     #Resample and cut out on return
-    return ot.rebin(pup_lyot_I,(kSz//2,kSz//2))[kSz//4-6:kSz//4+6,kSz//4-6:kSz//4+6],\
-           ot.rebin(pup_lyot_diff, (kSz//2,kSz//2))[kSz//4-6:kSz//4+6,kSz//4-6:kSz//4+6],\
+    return ot.rebin(nd.shift(pup_lyot_I,(-0.5,-0.5)),(kSz//2,kSz//2))[kSz//4-6:kSz//4+6,kSz//4-6:kSz//4+6],\
+           ot.rebin(nd.shift(pup_lyot_diff,(-0.5,-0.5)), (kSz//2,kSz//2))[kSz//4-6:kSz//4+6,kSz//4-6:kSz//4+6],\
         im_outer[kSz//2-7:kSz//2+7,kSz//2-7:kSz//2+7], im_outer_diff[kSz//2-7:kSz//2+7,kSz//2-7:kSz//2+7]
     
 if __name__=="__main__":
-    nz = 15
-    threshold = 2e-4
+    nz = 2
+    test_amp = 0.5
+    threshold = 1e-4
     sigs = np.zeros(nz)
     sigs_tt = np.zeros(nz)
     for i in range(1,nz):
         zernikes = np.zeros(nz)
-        zernikes[i]=0.1
+        zernikes[i]=test_amp
         pup_lyot_Ip, pup_lyot_diffp, im_outerp, im_outer_diffp = wfs_Idiff(zernikes)
-        zernikes[i]=-0.1
+        zernikes[i]=-test_amp
         pup_lyot_Im, pup_lyot_diffm, im_outerm, im_outer_diffm = wfs_Idiff(zernikes)
-        Imod_pup = (pup_lyot_diffp - pup_lyot_diffm)/0.2
-        Imod_im = (im_outer_diffp - im_outer_diffm)/0.2
+        Imod_pup = (pup_lyot_diffp - pup_lyot_diffm)/(2*test_amp)
+        Imod_im = (im_outer_diffp - im_outer_diffm)/(2*test_amp)
         Iflux_pup = (pup_lyot_Ip + pup_lyot_Im)/2
         Iflux_im = (im_outerp + im_outerm)/2
         sigs[i] =  1/np.sqrt(np.sum(Imod_pup**2/(Iflux_pup + threshold)))
