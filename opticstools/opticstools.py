@@ -282,7 +282,7 @@ def zernike(sz, coeffs=[0.,0.,0.], diam=None, rms_norm=False):
         #The "+1" is to make an inclusive range.
         for k in range(0,(n-m)//2+1):
             term += (-1)**k * np.math.factorial(n-k) / np.math.factorial(k)/\
-                np.math.factorial((n+m)/2-k) / np.math.factorial((n-m)/2-k) *\
+                np.math.factorial((n+m)//2-k) / np.math.factorial((n-m)//2-k) *\
                 rr**(n-2*k)
         if m_signed < 0:
             term *= np.sin(m*phi)

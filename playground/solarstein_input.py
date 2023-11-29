@@ -30,12 +30,13 @@ pinhole_diam = 20e-3 	#Pinhole diameter in mm
 wave = 0.63e-3			#Wavelength for single-mode fibre
 psize = 18				#Pupil size after pinhole in mm
 obs_size = psize * 0.13	#Obstruction size
-wave_bif = 1.8e-6		#Bifrost wavelength
+wave_bif = 1.8e-3		#Bifrost wavelength
 g_1e2_width_mm = 2 		#Gaussian 1/e^2 width in mm (for laser)
 b_width_mm = 3			#BIFROST width in mm (to check!!!)
 
 sz = 512				#size of wavefront computation : a numerical computation only
 before_mm_pix = 0.03	#mm per pixel: a numerical parameter only.
+nzernikes = 21			#Number of zernikes
 #--------------------------------------------------
 
 image_angular_rad_pix = wave/(sz*before_mm_pix)
@@ -59,6 +60,8 @@ E_out = np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(E_implane)))
 out_mask = ot.circle(sz, psize/output_linear_mm_pix, interp_edge=True) - \
 	ot.circle(sz, obs_size/output_linear_mm_pix, interp_edge=True)
 edge_mm = sz//2*output_linear_mm_pix
+
+plt.figure(1)
 plt.clf()
 plt.imshow(np.abs(E_out * out_mask), extent=[-edge_mm, edge_mm, -edge_mm, edge_mm])
 plt.title('Laser electric field')
@@ -72,3 +75,33 @@ print("Loss to mask: {:.3f}".format(loss))
 
 #Now, lets see what happens with BIFROST
 wave_long = 1.8e-6
+
+
+image_angular_rad_pix_bif = wave_bif/(sz*before_mm_pix)
+image_linear_mm_pix_bif = image_angular_rad_pix_bif * f_before
+output_angular_rad_pix_bif = wave_bif/(sz*image_linear_mm_pix)
+output_linear_mm_pix_bif = output_angular_rad_pix_bif * f_after
+out_mask = ot.circle(sz, psize/output_linear_mm_pix_bif, interp_edge=True) - \
+	ot.circle(sz, obs_size/output_linear_mm_pix_bif, interp_edge=True)
+edge_mm = sz//2*output_linear_mm_pix_bif
+
+I_out = np.zeros((sz,sz))
+for i in range(nzernikes):
+	coeffs = np.zeros(nzernikes)
+	coeffs[i] = 1
+	E_in = ot.zernike(sz, coeffs=coeffs, diam=b_width_mm/before_mm_pix, rms_norm=True) * \
+		ot.circle(sz, b_width_mm/before_mm_pix, interp_edge=True)
+	E_implane = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(E_in)))
+	E_implane *= ot.circle(sz, pinhole_diam/image_linear_mm_pix, interp_edge=True)
+	E_out = np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(E_implane)))
+	I_out += np.abs(E_out)**2
+	
+plt.figure(2)
+plt.clf()
+plt.imshow(np.abs(I_out * out_mask), extent=[-edge_mm, edge_mm, -edge_mm, edge_mm])
+plt.title('Intensity')
+plt.xlabel('Pupil x distance (mm)')
+plt.ylabel('Pupil y distance (mm)')
+plt.colorbar()
+plt.axis([-15,15,-15,15])
+	
