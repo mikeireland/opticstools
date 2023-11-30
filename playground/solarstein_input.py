@@ -30,12 +30,12 @@ pinhole_diam = 20e-3 	#Pinhole diameter in mm
 wave = 0.63e-3			#Wavelength for single-mode fibre
 psize = 18				#Pupil size after pinhole in mm
 obs_size = psize * 0.13	#Obstruction size
-wave_bif = 1.8e-3		#Bifrost wavelength
+wave_bif = 1.5e-3		#Bifrost wavelength
 g_1e2_width_mm = 2 		#Gaussian 1/e^2 width in mm (for laser)
-b_width_mm = 3			#BIFROST width in mm (to check!!!)
+b_width_mm = 2*.2*7		#BIFROST width in mm (based on 0.2 NA and 7mm focal length)
 
 sz = 512				#size of wavefront computation : a numerical computation only
-before_mm_pix = 0.03	#mm per pixel: a numerical parameter only.
+before_mm_pix = 0.05	#mm per pixel: a numerical parameter only.
 nzernikes = 21			#Number of zernikes
 #--------------------------------------------------
 
@@ -51,6 +51,7 @@ E_in = np.sqrt(intensity_in)
 E_implane = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(E_in)))
 
 E_implane *= ot.circle(sz, pinhole_diam/image_linear_mm_pix, interp_edge=True)
+I_implane_laser = np.abs(E_implane)**2
 
 #Now reverse for the outgoing beam.
 output_angular_rad_pix = wave/(sz*image_linear_mm_pix)
@@ -79,7 +80,7 @@ wave_long = 1.8e-6
 
 image_angular_rad_pix_bif = wave_bif/(sz*before_mm_pix)
 image_linear_mm_pix_bif = image_angular_rad_pix_bif * f_before
-output_angular_rad_pix_bif = wave_bif/(sz*image_linear_mm_pix)
+output_angular_rad_pix_bif = wave_bif/(sz*image_linear_mm_pix_bif)
 output_linear_mm_pix_bif = output_angular_rad_pix_bif * f_after
 out_mask = ot.circle(sz, psize/output_linear_mm_pix_bif, interp_edge=True) - \
 	ot.circle(sz, obs_size/output_linear_mm_pix_bif, interp_edge=True)
@@ -105,3 +106,7 @@ plt.ylabel('Pupil y distance (mm)')
 plt.colorbar()
 plt.axis([-15,15,-15,15])
 	
+print("microns per pixel in image plane (laser): {:.1f}".format(image_linear_mm_pix*1000))
+print("microns per pixel in image plane (BIFROST): {:.1f}".format(image_linear_mm_pix_bif*1000))
+print("Output microns per pixel (laser): {:.1f}".format(output_linear_mm_pix*1000))
+print("Output microns per pixel (BIFROST): {:.1f}".format(output_linear_mm_pix_bif*1000))
