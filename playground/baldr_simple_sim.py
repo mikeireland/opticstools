@@ -8,6 +8,8 @@ if not '..' in sys.path:
 import opticstools as ot
 from scipy.ndimage import shift
 from scipy.linalg import eigh
+from scipy.linalg import svd
+
 
 """
 1.2 microns
@@ -19,7 +21,7 @@ DM is 12x12, with the pupil being 10 actuators across.
 """
 
 sim = 'Nice H'
-sim = 'Sydney'
+#sim = 'Sydney'
 
 if sim == 'Sydney':
 	wave = 1.2e-3
@@ -73,6 +75,7 @@ pmask_ftshift = np.fft.fftshift(pmask)
 pup = ot.circle(sz, psize*oversamp, interp_edge=True)
 det_Ep = np.fft.fftshift(np.fft.ifft2(np.fft.fft2(np.fft.fftshift(pup)) * pmask_ftshift))
 det_Ip = ot.rebin(np.abs(det_Ep)**2,(sz//oversamp,sz//oversamp))
+det_Inorm = np.sum(det_Ip)
 
 #For the interaction matrix, we will need to define which pixels we are using.
 pix_to_use = np.where(ot.circle(sz//oversamp, psize*1.05) > 0)
@@ -94,26 +97,39 @@ for i in np.arange(nact):
 	pup_act = pup * np.exp(-1j*acts[i]*poke_amp)
 	det_E = np.fft.fftshift(np.fft.ifft2(np.fft.fft2(np.fft.fftshift(pup_act)) * pmask_ftshift))
 	det_I2 = ot.rebin(np.abs(det_E)**2,(sz//oversamp,sz//oversamp))
-	Imat[i] = ((det_I1 - det_I2)/det_Ip)[pix_to_use]
+	Imat[i] = ((det_I1 - det_I2)/det_Inorm)[pix_to_use]
 	plt.clf()
 	plt.imshow(det_I1 - det_I2)
 	plt.title('Opposite Poke difference')
 	plt.pause(.01)
 	
-print("Computing eigenfunctions")
-W,V = eigh(Imat.T @ Imat)
+print("Computing SVD")
+#W,V = eigh(Imat.T @ Imat) #Here was Mike's intuitive way to start this.
+Us, s, Vs = svd(Imat, full_matrices=False)
 plt.figure(1)
 plt.clf()
-plt.semilogy(W[::-1], '.')
-plt.axis([0,nact,.01,10])
-plt.xlabel('Eigenvalue index')
-plt.ylabel('Eigenvalue')
+plt.semilogy(s, '.', label="Raw")
+plt.axis([0,nact,1e-3,.1])
+plt.xlabel('Index')
+plt.ylabel('Singular Value')
 
-#Now show the eigenvectors
+
+#Next normalise by the amplitude of the DM mode (NB something we don't actually know
+#for the real system!)
+dm_modes = np.tensordot(Us, acts, axes=[[0],[0]])
+dm_mode_rms = np.zeros(nact)
+wpup = np.where(pup)
+for i in np.arange(nact):
+	dm_mode_rms[i] = np.std(dm_modes[i,wpup[0], wpup[1]])
+
+plt.semilogy(s/dm_mode_rms, '.', label="Normalised")
+plt.legend()
+	
+#Now show the eigenvectors in sensor space
 plt.figure(2)
 for i in np.arange(nact):
 	mode = np.zeros( (sz//oversamp, sz//oversamp) )
-	mode[pix_to_use] = V[:,-nact+i]
+	mode[pix_to_use] = Vs[i]
 	plt.clf()
 	plt.imshow(mode)
 	plt.pause(.02)
