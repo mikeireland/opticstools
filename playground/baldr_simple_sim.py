@@ -97,7 +97,9 @@ for i in np.arange(nact):
 	pup_act = pup * np.exp(-1j*acts[i]*poke_amp)
 	det_E = np.fft.fftshift(np.fft.ifft2(np.fft.fft2(np.fft.fftshift(pup_act)) * pmask_ftshift))
 	det_I2 = ot.rebin(np.abs(det_E)**2,(sz//oversamp,sz//oversamp))
-	Imat[i] = ((det_I1 - det_I2)/det_Inorm)[pix_to_use]
+	#Divide by 2 on the next line as we are averaging the +ve and -ve components.
+	#Divide by the poke_amp because we want the intensity per radian of phase
+	Imat[i] = ((det_I1 - det_I2)/det_Inorm/2/poke_amp)[pix_to_use]
 	plt.clf()
 	plt.imshow(det_I1 - det_I2)
 	plt.title('Opposite Poke difference')
@@ -109,7 +111,7 @@ Us, s, Vs = svd(Imat, full_matrices=False)
 plt.figure(1)
 plt.clf()
 plt.semilogy(s, '.', label="Raw")
-plt.axis([0,nact,1e-3,.1])
+plt.axis([0,nact,1e-3,1])
 plt.xlabel('Index')
 plt.ylabel('Singular Value')
 
@@ -118,7 +120,7 @@ plt.ylabel('Singular Value')
 #for the real system!)
 dm_modes = np.tensordot(Us, acts, axes=[[0],[0]])
 dm_mode_rms = np.zeros(nact)
-wpup = np.where(pup)
+wpup = np.where(pup > 0.5)
 for i in np.arange(nact):
 	dm_mode_rms[i] = np.std(dm_modes[i,wpup[0], wpup[1]])
 
@@ -133,3 +135,23 @@ for i in np.arange(nact):
 	plt.clf()
 	plt.imshow(mode)
 	plt.pause(.02)
+
+#Now do a final test to make sure we understand...
+#Note that the natural units we're working with here in defining 
+#Orthogonality etc is a readout noise limit with 1 electron RMS per pixel.
+dm_mode0 = dm_modes[0]/dm_mode_rms[0]
+#Put 1/10th of this on the DM.
+pup_act = pup * np.exp(1j*dm_mode0 * 0.1)
+det_E = np.fft.fftshift(np.fft.ifft2(np.fft.fft2(np.fft.fftshift(pup_act)) * pmask_ftshift))
+det_I1 = ot.rebin(np.abs(det_E)**2,(sz//oversamp,sz//oversamp))
+mode0_rms = np.std((det_I1-det_Ip)[pix_to_use]/det_Inorm/0.1)
+
+#plt.imshow((det_I1 - det_Ip)/det_Inorm / 0.1)
+
+#pup_act = pup * np.exp(-1j*acts[i]*poke_amp)
+#det_E = np.fft.fftshift(np.fft.ifft2(np.fft.fft2(np.fft.fftshift(pup_act)) * pmask_ftshift))
+#det_I2 = ot.rebin(np.abs(det_E)**2,(sz//oversamp,sz//oversamp))
+
+#Divide by 2 on the next line as we are averaging the +ve and -ve components.
+#Divide by the poke_amp because we want the intensity per radian of phase
+#Imat[i] = ((det_I1 - det_I2)/det_Inorm/2/poke_amp)[pix_to_use]
