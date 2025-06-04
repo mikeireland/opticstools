@@ -6,15 +6,15 @@ if not '..' in sys.path:
 import opticstools as ot
 import scipy.ndimage as nd
 
-f_ratio = 20    #Focal ratio
+f_ratio = 18    #Focal ratio
 px_um = 24      #Pixel width in microns.
-qe = 0.8
+qe = 0.6
 x = np.arange(300)*0.024
 h = 38
 y = 150
 s = 2
 
-def planck_lambda(wave, T=290):
+def planck_lambda(wave, T=293):
     """
     Input Wavelength in microns, and flux per unit micron. Area also in 
     microns^2

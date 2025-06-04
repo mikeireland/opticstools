@@ -21,7 +21,7 @@ DM is 12x12, with the pupil being 10 actuators across.
 """
 
 sim = 'Nice H'
-#sim = 'Sydney'
+sim = 'Sydney'
 
 if sim == 'Sydney':
 	wave = 1.2e-3
@@ -145,7 +145,7 @@ pup_act = pup * np.exp(1j*dm_mode0 * 0.1)
 det_E = np.fft.fftshift(np.fft.ifft2(np.fft.fft2(np.fft.fftshift(pup_act)) * pmask_ftshift))
 det_I1 = ot.rebin(np.abs(det_E)**2,(sz//oversamp,sz//oversamp))
 mode0_rms = np.std((det_I1-det_Ip)[pix_to_use]/det_Inorm/0.1)
-
+test = 0
 #plt.imshow((det_I1 - det_Ip)/det_Inorm / 0.1)
 
 #pup_act = pup * np.exp(-1j*acts[i]*poke_amp)

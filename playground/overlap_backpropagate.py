@@ -1,8 +1,9 @@
 """
 In this script, we attempt to back-propagate a mode from LIFE onto a spacecraft with an
-annular emission pattern.
+annular emission pattern. This idea originally came from Thomas in Zurich.
 
-The final
+The final incoherent coupling is just the integral of the intensity pattern over the 
+mask.
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,6 +45,9 @@ dm_diam = dist_combiner / dist * mirror_diam
 #Do we want to try a diffractive pupil? This doesn't seem to work for a fixed
 #maximum diameter of the input mirror
 try_diffractive_pupil=False
+
+#How about an apodized pupil?
+try_apodized_pupil=False
 nspikes=7
 frac_rad_diffract = 0.33
 #-------
@@ -73,15 +77,21 @@ shield[sz//2:]=0
 #Find the coupling
 total_coupling = np.sum(np.abs(efield_telescope)**2 * spacecraft)
 print("Total modal coupling from spacecraft: {:.2e}".format(total_coupling))
-total_coupling = np.sum(np.abs(efield_telescope)**2 * sheild)
+total_coupling = np.sum(np.abs(efield_telescope)**2 * shield)
 print("Total modal coupling from shield: {:.2e}".format(total_coupling))
 
+plt.clf()
 plt.imshow(np.abs(efield_telescope)*spacecraft, extent=[-sz//2*m_pix, sz//2*m_pix, -sz//2*m_pix, sz//2*m_pix])
 plt.xlabel('Offset (m)')
 plt.ylabel('Offset (m)')
 
+theta = np.linspace(0,2*np.pi,100)
+plt.plot(mirror_diam/2*np.cos(theta), mirror_diam/2*np.sin(theta),'w')
+plt.plot(spacecraft_inner_diam/2*np.cos(theta), spacecraft_inner_diam/2*np.sin(theta),'C1')
+plt.plot(spacecraft_diam/2*np.cos(theta), spacecraft_diam/2*np.sin(theta),'r')
+
 if try_diffractive_pupil:
-	#Now lets experiment with a diffractive aperture.
+	#Now lets experiment with a diffractive aperture just in the ~300mm entrance.
 	x = np.arange(sz)-sz//2
 	xy = np.meshgrid(x,x)
 	rr = np.sqrt(xy[0]**2 + xy[1]**2)
@@ -96,5 +106,24 @@ if try_diffractive_pupil:
 	
 	#Find the coupling
 	total_coupling = np.sum(np.abs(efield_telescope_ap)**2 * spacecraft)
+	print("Total modal coupling (diffractive): {:.2e}".format(total_coupling))
+	
+if try_apodized_pupil:
+	#Now lets experiment with an apodized aperture.
+	x = np.arange(sz)-sz//2
+	xy = np.meshgrid(x,x)
+	rr = np.sqrt(xy[0]**2 + xy[1]**2)
+	theta = np.arctan2(xy[0],xy[1])
+	import pdb; pdb.set_trace()
+	#!!! Up to here.
+	ap = np.maximum(np.minimum(ap, 1),0)
+	efield_toprop = efield_entrance * ap
+	
+	#Now focus and propagate!
+	efield_telescope_ap = prop.propagate(efield_toprop*telescope)
+	
+	#Find the coupling
+	total_coupling = np.sum(np.abs(efield_telescope_ap)**2 * spacecraft)
 	print("Total modal coupling (apodized): {:.2e}".format(total_coupling))
+
 	

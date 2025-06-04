@@ -12,6 +12,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import special
 from scipy import optimize
+import scipy.sparse as sps
+import scipy.sparse.linalg as linalg
+import time
+
 from .utils import *
 try:
     import pyfftw
@@ -41,6 +45,60 @@ for z_ix in range(0,MAX_ZERNIKE):
     else:
         m += 2
 
+def scalar_eigen_build(n, delta, periodic=True):
+    """Build a matrix problem for a waveguide in a scalar approximation.
+    
+    Parameters
+    ----------
+    k0: float
+        Wavenumber in vacuum.
+    n: numpy array
+        Refractive index of the mediu (a 2D array)
+    delta: float
+        Grid width in units of lambda/2 pi.
+    periodic: bool
+        If True, the grid is periodic in both x and y. 
+        
+    Returns
+    -------
+    A: float array
+        The spase matrix.
+    """
+    if periodic:
+        raise UserWarning("Periodic grids not yet supported in scalar_eigen_build")
+    # lets find out size of grid and construct some finite difference operators  
+    # These can take different forms depending on the user inputed boundarys
+    # These operators also need boundaries
+    nx, ny = np.shape(n)
+    t = time.time()
+    # construct Laplacian operator single row of FD grid 
+    
+    Lx_temp = ( - 2*np.eye(nx, k = 0) + np.eye(nx, k = 1) + np.eye(nx, k = -1)) / delta / delta
+    
+    #Comment from vector code:
+    # This statement is kind of confusing but is the equivilent to doing a tensor 
+    #contraction. So each row operation is apended to the diagonals of a larger 
+    #matrix so we can operate on the whole grid at once. 
+    Lx = sps.block_diag([Lx_temp for i in range(ny)], format = 'csr')
+    Ly  = ( - 2* sps.eye(nx*ny, k = 0) + sps.eye(nx*ny, k = nx) + sps.eye(nx*ny, k = -nx)) / delta / delta
+    L = Lx + Ly
+    P = L + sps.spdiags(n.flatten()**2, 0, nx*ny, nx*ny, format = 'csr')
+    
+
+    return P
+
+def solve_scalar_eigen(P, neff_trial, E_trial=None, neigs=1):
+    """
+	Solves eigenproblem and returns the scalar E-field
+	"""
+    print('Solving eigenmodes on CPU')
+    t = time.time()
+
+    beta_squared, E = linalg.eigs(P, neigs, sigma=neff_trial ** 2, v0 = E_trial)
+
+    print('{} secs later we have the final solution.'.format(time.time() - t))
+
+    return beta_squared ** 0.5, E
 
 def azimuthalAverage(image, center=None, stddev=False, returnradii=False, return_nr=False, 
         binsize=0.5, weights=None, steps=False, interpnan=False, left=None, right=None, return_max=False):
@@ -212,7 +270,7 @@ def airy(x_in, obstruction_sz=0):
 
     #Return the same data type input (within reason):
     if type(x_in)==int or type(x_in)==float:
-    	y1 = y1[0]
+        y1 = y1[0]
     elif type(x_in)==list:
         y1 = list(y1)
     else:
@@ -573,7 +631,7 @@ def kmf(sz, L_0=np.inf, r_0_pix=None):
         an outer scale of approximately half (CHECK THIS!) pixels. 
    
     r_0_pix: (optional) float
-	The Fried r_0 parameter in units of pixels.
+    The Fried r_0 parameter in units of pixels.
  
     Returns
     -------
@@ -843,7 +901,7 @@ def shift_and_ft(im):
     return ftim
 
 def rebin(a, shape):
-    """Re-bins an image to a new (smaller) image with summing	
+    """Re-bins an image to a new (smaller) image with summing    
 
     Originally from:
     http://stackoverflow.com/questions/8090229/resize-with-averaging-or-rebin-a-numpy-2d-array
@@ -1096,19 +1154,17 @@ def Z(T,p,xw): #compressibility
     return 1-(p/T)*(a0+a1*t+a2*t**2+(b0+b1*t)*xw+(c0+c1*t)*xw**2) + (p/T)**2*(d+e*xw**2)
 
 
-def nm1_air(wave,t,p,h,xc):
+def nm1_air(wave,t=17,p=75000,h=0.3,xc=430):
+    """
     # wave: wavelength, 0.3 to 1.69 mu m 
     # t: temperature, -40 to +100 deg C
     # p: pressure, 80000 to 120000 Pa
     # h: fractional humidity, 0 to 1
     # xc: CO2 concentration, 0 to 2000 ppm
-
-    sigma = 1/wave           #mu m^-1
-    
+    """
+    sigma = 1/wave    #1 / microns
     T= t + 273.15     #Temperature deg C -> K
-    
     R = 8.314510      #gas constant, J/(mol.K)
-    
     k0 = 238.0185     #mu m^-2
     k1 = 5792105      #mu m^-2
     k2 = 57.362       #mu m^-2
@@ -1171,7 +1227,7 @@ def nm1_air(wave,t,p,h,xc):
 
 class FresnelPropagator(object):
     """Propagate a wave by Fresnel diffraction"""
-    def __init__(self,sz,m_per_pix, d, wave,nthreads=nthreads):
+    def __init__(self,sz,m_per_pix, d, wave,nthreads=nthreads, truncate=True):
         """Initiate this fresnel_propagator for a particular wavelength, 
         distance etc.
     
@@ -1187,6 +1243,8 @@ class FresnelPropagator(object):
             Wavelength in metres.
         nthreads: int
             Number of threads. 
+        truncate: bool
+            Truncate the FFT if we go past Nyquist.
         """
         self.sz = sz
         self.nthreads=nthreads
@@ -1196,6 +1254,12 @@ class FresnelPropagator(object):
         xy = np.meshgrid(x,x)
         uu =np.sqrt(xy[0]**2 + xy[1]**2)
         self.h_ft = np.exp(1j*np.pi*uu**2*wave*d)
+        if truncate:
+            #dphi du = 2 \pi * wave * d * u
+            #        > \pi
+            # u > 1/2/wave/d
+            self.h_ft *= (uu < m_per_pix*sz/2/wave/d)
+            
     
     def propagate(self,wf):
         """Propagate a wavefront, according to the parameters established on the
