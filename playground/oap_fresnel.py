@@ -12,7 +12,7 @@ from matplotlib.colors import LogNorm
 ddir = '/Users/mireland/pyxis/telescope/PyxisTel/HeimdallrMirorTesting/'
 
 #Choose a file
-file = '17July23/BigOAP4.csv'
+#file = '17July23/BigOAP4.csv'
 #file = '17July23/BigOAP3.csv'
 #file = '17July23/BigOAP2.csv'
 #file = '17July23/BigOAP1.csv'
@@ -29,10 +29,20 @@ file = '17July23/BigOAP4.csv'
 #file = 'Sep24/sep24_OAP1_1_50mm_unmount.csv'
 #file = 'Sep24/oct24_OAP1_4_nosub.csv'
 #file = 'Sep24/oct24_OAP1_3_nosub.csv'
-#file = 'Sep24/oct24_OAP2_1_nosub.csv'
+file = 'Sep24/oct24_OAP2_1_nosub.csv'
 #file = 'Sep24/oct24_OAP2_2_nosub.csv'
-file = 'Jun24/Baldr_OAP1.csv'
+#file = 'Jun24/Baldr_OAP1.csv'
 #file = '2024Feb07/thorlabs_OAP_30deg.csv'
+file = 'June25/OAP2_jun25.csv'
+#file = 'June25/OAP2_jun25_redone.csv'
+#file = 'June25/OAP2_A1_jun25.csv'
+#file = 'June25/OAP2_A2_jun25.csv'
+file = 'June25/OAP2_A3_jun25.csv'
+#file = 'June25/OAP2_A4_jun25.csv'
+#file = 'June25/OAP2_A5_jun25.csv'
+sz = 150
+
+#1: 91.3, 2: 87.9, 3: 87.0, 4: 92.8, 5: 62.3. 
 
 #file = 'Aug24/spherical_aug24_1.csv'
 #file = 'Aug24/spherical_aug24_2.csv'
@@ -47,17 +57,23 @@ file = 'Jun24/Baldr_OAP1.csv'
 #file = 'May25/OAP1_0_May25.csv'
 #file = 'May25/OAP1_4_May25.csv'
 
+#file = 'June25/OAP1_1_June25_realign.csv'
+#file = 'June25/OAP1_2_June25.csv'
+#file = 'June25/OAP1_3_June25.csv'
+#file = 'June25/OAP1_4_June25_2.csv'
+#file = 'June25/OAP1_5_June25.csv'
 
 beam_diam = 12.0
 full_diam = 25.8
-sz = 192
+#sz = 192
 mult = 1
 
-full_diam = 50.8 	#Full diameter in mm
-beam_diam = 18.0	#Beam size in mm
-sz = 256
+#full_diam = 50.8 	#Full diameter in mm
+#beam_diam = 18.0	#Beam size in mm
+#sz = 256
 
-sz = 240
+#sz = 240
+
 
 crop = 1
 
@@ -74,7 +90,7 @@ OAP2_to_DM = (884.381 - 573.664)/np.cos(np.radians(3.765))
 DM_virtual_dist = 1/(1/eff_OAP1 - 1/OAP1_to_DM)
 #DM_virtual_dist = 1/(1/eff_OAP2 - 1/OAP2_to_DM)
 DM_virtual_dist = -600
-imcrop = 128
+imcrop = 64
 #-------
 wave = np.mean(waves)
 s1 = np.genfromtxt(ddir + file, delimiter=',')
@@ -86,10 +102,12 @@ sz1 = 2*(np.minimum(s1.shape[0], s1.shape[1])//2) - crop
 s1 = s1[s1.shape[0]//2 - sz1//2:s1.shape[0]//2 + sz1//2,s1.shape[1]//2 - sz1//2:s1.shape[1]//2 + sz1//2]
 mm_pix = full_diam / sz1
 
+#s1[:,140:170] += 0.15
+
 #First figure
 plt.figure(1)
 plt.clf()
-plt.imshow(s1, vmax=1.5, vmin=0)
+plt.imshow(s1, vmax=0.7, vmin=0.0)
 plt.colorbar()
 
 s_crop = s1[sz1//2-sz//2:sz1//2+sz//2,sz1//2-sz//2:sz1//2+sz//2]
@@ -112,7 +130,7 @@ ww = np.where(pcirc)
 x_in_circ = xy[0][ww]
 y_in_circ = xy[1][ww]
 s_in_circ = s_crop[ww]
-xx = np.array([np.ones(len(x_in_circ)), x_in_circ**2-y_in_circ**2, 2*x_in_circ*y_in_circ, x_in_circ**2 + y_in_circ**2])
+xx = np.array([np.ones(len(x_in_circ)), x_in_circ**2-y_in_circ**2, 2*x_in_circ*y_in_circ, x_in_circ**2 + y_in_circ**2, x_in_circ, y_in_circ])
 fit = np.linalg.inv(xx.dot(xx.T)).dot(xx).dot(s_in_circ)
 s_sub = np.zeros_like(s_crop)
 s_sub[ww] = s_crop[ww] - np.dot(fit, xx)
@@ -121,7 +139,7 @@ print(f"Astig 2: {fit[2]*wave_units*1e9:.1f} nm")
 fit_foc = fit
 fit_foc[:-1] = 0
 s_crop[ww] -= np.dot(fit_foc, xx)
-
+print(f"P-V (astig subtracted) {(np.max(s_sub[ww]) - np.min(s_sub[ww]))*wave_units*1e9:.1f}nm")
 
 #Make an image
 pup_big = np.zeros((1024,1024), dtype=complex)
@@ -137,6 +155,7 @@ ww = np.where(ot.circle(sz, beam_diam/mm_pix))
 pup_phasor = np.mean(pup_on_dm[ww])
 phasor_av = np.abs(pup_phasor) #NB, this is actually the key metric...
 pup_phasor /= phasor_av
+print("NB the following doesn't subtract tilt!")
 print( f'RMS (rad) after Propagation: {np.std(np.angle(pup_on_dm[ww] / pup_phasor)):.3f}')
 print( f'Initial RMS (rad): {np.std(s_crop[ww]*wave_units/wave*2*np.pi):.3f}')
 

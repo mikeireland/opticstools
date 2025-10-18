@@ -1258,7 +1258,7 @@ class FresnelPropagator(object):
             #dphi du = 2 \pi * wave * d * u
             #        > \pi
             # u > 1/2/wave/d
-            self.h_ft *= (uu < m_per_pix*sz/2/wave/d)
+            self.h_ft *= (uu < m_per_pix*sz/2/wave/np.abs(d))
             
     
     def propagate(self,wf):
