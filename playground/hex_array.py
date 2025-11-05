@@ -32,8 +32,8 @@ from philsol.classy import phil_class
 
 sz = 138 #Apparently has to be even!
 microns_pix = 0.8
-diam = 8
-cell_edge = 16
+diam = 7
+cell_edge = 15
 
 x_pcf = (np.arange(sz)-sz//2) * microns_pix
 xy = np.meshgrid(x_pcf,x_pcf)
@@ -43,7 +43,7 @@ rr = np.sqrt(rr2)
 hole = ot.circle(sz,diam/microns_pix, interp_edge=True)
 
 holes = np.zeros_like(hole)
-x0 = -1.5*cell_edge
+x0 = -1.55*cell_edge
 y0 = -np.sqrt(3)/2*cell_edge * 3
 for dx in np.arange(4)*cell_edge:
     holes += nd.shift(hole,((x0 + dx)/microns_pix, y0/microns_pix), order=1)
@@ -95,10 +95,11 @@ plt.ylabel('Microns')
 
 if True:
 	#---
-	wavelength_in_mm = np.linspace(0.008,0.0185,3)
+	wavelength_in_mm = np.linspace(0.006,0.016,3)
 	#---
 	
 	n_wg = 1.5-0.5*holes
+	# This was an artificial way to make sure the field was well confined:
 	#n_wg[rr>3.4*cell_edge]=1
 	n_wg = np.repeat(n_wg[:,:,np.newaxis],3, axis = 2) 
 	

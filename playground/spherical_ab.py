@@ -22,12 +22,13 @@ offset y = x*f, with x the ray angle in air.
 Therefore wavefront error as a slope is:
 dw/dx = (t/f) * (y/f)^3(1 - n^2)/(6 n^3)
 
-Peak to valley in length unit sis:
-w = 4 * t * (Y/f)^4 * (1 - n^2) / (6 n^3)
- = (2/3) * t * NA^4 * (1 - n^2) / n^3
+Peak to valley in length units for an aperture of half
+width Y is:
+w = 3 * t * (Y/f)^4 * (n^2 - 1) / (6 n^3)
+ = (1/2) * t * NA^4 * (n^2 - 1) / n^3
  
 RMS wavefront error is this value scaled by sqrt(5/36):
-wrms = sqrt(5)/9 * t * NA^4 * (1 - n^2) / n^3
+wrms = sqrt(5)/12 * t * NA^4 * (n^2 - 2) / n^3
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -64,18 +65,18 @@ sz = 256
 cpup = ot.circle(sz, sz//4)
 ref_im = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(cpup)))
 ref_psf = np.abs(ref_im)**2
-t = np.linspace(0,0.2,10)
+t = np.linspace(0,0.1,20)
 n = 1.55
 NA = 0.5
 wave = 1.06e-3 # wavelength in mm
-amps = (np.sqrt(5)/9) * t * NA**4 * (n**2-1) / n**3 / (wave/2/np.pi) 
+amps = (np.sqrt(5)/12) * t * NA**4 * (n**2-1) / n**3 / (wave/2/np.pi) 
 power_scale = np.zeros(len(t))
 for i, amp in enumerate(amps):
     sph = ot.zernike(sz, coeffs=[0,0,0, 0,0,0, 0,0,0,0, 0,0,amp], diam=64, rms_norm=True)
     pup = ot.circle(sz, sz//4)*np.exp(1j*sph)
     im = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(pup)))
     psf = np.abs(im)**2
-    power_scale[i] = np.max(psf)/np.max(ref_psf)
+    power_scale[i] = np.max(ref_psf)/np.max(psf)
 
 plt.clf()
 plt.figure(1)

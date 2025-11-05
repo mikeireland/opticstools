@@ -45,7 +45,7 @@ for z_ix in range(0,MAX_ZERNIKE):
     else:
         m += 2
 
-def scalar_eigen_build(n, delta, periodic=True):
+def scalar_eigen_build(n, delta, periodic=False):
     """Build a matrix problem for a waveguide in a scalar approximation.
     
     Parameters
