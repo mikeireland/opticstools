@@ -176,7 +176,7 @@ if True:
 	
 	azav = ot.azimuthalAverage(np.abs(Ex[0])**2 + np.abs(Ex[1])**2, returnradii=True, binsize=1)
 
-#------ simple apodized below here -------
+#------ simple apodized calculation below here -------
 if False:
 	R_bs = [1,2,5,10,20,50,100,200,500]
 	R_bs = [1,2,5,10,20,50,100]
@@ -203,16 +203,21 @@ if False:
 	acouplings_chrom = []
 	xy = np.meshgrid(np.arange(sz)-sz//2, np.arange(sz)-sz//2)
 	rr2 = xy[1]**2 + xy[0]**2
+	#The chromatic aperture size, which is a very rough fit to Zemax.
 	asize_chrom = sz/(wavelength_in_mm[0]*(f_rat/apod_scale)/mm_pix) * (wavelength_in_mm/wavelength_in_mm[0])**(-1.7)
 
 	#Now go through 1 wavelength at a time
 	for ix, wave in enumerate(wavelength_in_mm):
 		pup = ot.circle(sz,psize[ix], interp_edge=True)
+		# Apodized pupil.
 		pup_apod = ot.circle(sz,psize[ix]*apod_scale, interp_edge=True)*np.exp(-rr2/(psize[ix]*apod_scale/2)**2)
+		# Apodized pupil, set to 1/e in electric field (1/e^2 in intensity) if apod_scale=1.0
 		pup_apod_chrom = ot.circle(sz,asize_chrom[ix], interp_edge=True)*np.exp(-rr2/(asize_chrom[ix]/2)**2)
+		# Image plane electric fields corresponding to these pupils
 		im_e = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(pup)))
 		im_e_apod = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(pup_apod)))
 		im_e_apod_chrom =  np.fft.fftshift(np.fft.fft2(np.fft.fftshift(pup_apod_chrom)))
+		# Now compute a step-index fibre electric field.
 		V = ot.compute_v_number(wave, core_radius, na)
 		U, n_per_j = ot.neff(V)
 		U = U[0]
@@ -229,6 +234,7 @@ if False:
 		mode = ot.mode_2d(V, core_radius, sampling=mm_pix, sz=sz)
 		if ix==0:
 			mode0 = mode.copy()
+		#Compute the overlap integral!
 		couplings += [np.abs(np.sum(im_e*mode.conj()))**2/np.sum(np.abs(im_e)**2)/np.sum(np.abs(mode)**2)]
 		acouplings += [np.abs(np.sum(im_e_apod*mode.conj()))**2/np.sum(np.abs(im_e_apod)**2)/np.sum(np.abs(mode)**2)]
 		acouplings_chrom += [np.abs(np.sum(im_e_apod_chrom*mode.conj()))**2/np.sum(np.abs(im_e_apod_chrom)**2)/np.sum(np.abs(mode)**2)]
