@@ -1127,6 +1127,12 @@ def nglass(l, glass='sio2'):
     elif (glass == 'epoclad'):
         n = 1.560 + 0.0073/l**2 + 0.00038/l**4
         return n
+    elif (glass == 'krs5'):
+        B = np.array([1.8293958, 1.6675593, 1.1210424, 0.04513366, 12.380234])
+        C = np.array([0.0225, 0.0625, 0.1225, 0.2025, 27089.737])
+    elif (glass == 'kbr'):
+        B = np.array([0.39408, 0.79221, 0.01981, 0.15587, 0.17673, 2.06217])
+        C = np.array([0,0.146,0.173, 0.187, 60.61, 87.72])**2
     else:
         print("ERROR: Unknown glass {0:s}".format(glass))
         raise UserWarning
