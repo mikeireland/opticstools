@@ -34,9 +34,9 @@ UT_uv = np.array([[-9.925, -20.335],
 wave = 3.8e-6 # Wavelength in meters (3.8 microns)
 
 # Make a 2D array of angles in radians, up to
-# 1 arcsecond = 5e-6 radians.
-alpha = np.linspace(-5e-6, 5e-6, 500)
-delta = np.linspace(-5e-6, 5e-6, 500)
+# 0.05 arcsecond = 2.5e-7 radians.
+alpha = np.linspace(-2.5e-7, 2.5e-7, 200)
+delta = np.linspace(-2.5e-7, 2.5e-7, 200)
 alpha, delta = np.meshgrid(alpha, delta)
 
 # Calculate the electric fields for each telescope
@@ -45,21 +45,26 @@ for i in range(4):
     u, v = UT_uv[i]
     E[i] = np.exp(1j * (2 * np.pi * (u * alpha + v * delta) / wave))
     
-# Make the nulled outputs
-En1 = E[0] - E[1]
-En2 = E[2] - E[3]
+# Make the nulled outputs. We can swap the telescopes here,
+# which in practice means moving the mirrors in the "switchyard"
+# to change which telescope is which.
+En1 = E[0] - E[3]
+En2 = E[1] - E[2]
 
 # Make the final outputs
 Ea = En1 + 1j * En2
 Eb = En1 - 1j * En2
 
 # Calculate the intensities
+# For Esha: See how these intensites are nulled in the centre,
+# but also have aliased nulls, i.e. there are some places where
+# an exoplanet will be be detectable.
 Ia = np.abs(Ea)**2
 Ib = np.abs(Eb)**2
 
 # Plot the 2D map of Ia - Ib, with extent in arcseconds
 plt.figure(figsize=(8, 6))
-plt.imshow(Ia - Ib, extent=(-1,1,-1,1), origin='lower', cmap='viridis')
+plt.imshow(Ia - Ib, extent=(-50, 50, -50, 50), origin='lower', cmap='viridis')
 plt.colorbar(label='Intensity Difference (Ia - Ib)')
-plt.xlabel('Alpha (arcseconds)')
-plt.ylabel('Delta (arcseconds)')
+plt.xlabel('Alpha (milli-arcseconds)')
+plt.ylabel('Delta (milli-arcseconds)')
