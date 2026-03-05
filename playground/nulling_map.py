@@ -48,8 +48,15 @@ for i in range(4):
 # Make the nulled outputs. We can swap the telescopes here,
 # which in practice means moving the mirrors in the "switchyard"
 # to change which telescope is which.
-En1 = E[0] - E[3]
-En2 = E[1] - E[2]
+
+# Add in some phase offsets in case we want to simulate
+# fringe tracking errors.
+delta1  = 0.0 * np.pi # Phase offset for nuller 1
+delta2  = 0.0 * np.pi # Phase offset for nuller 2
+null_phase1 = np.pi + delta1
+null_phase2 = np.pi + delta2
+En1 = E[0] + np.exp(1j * null_phase1) * E[3]
+En2 = E[1] + np.exp(1j * null_phase2) * E[2]
 
 # Make the final outputs
 Ea = En1 + 1j * En2
