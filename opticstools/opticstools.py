@@ -20,8 +20,8 @@ from .utils import *
 try:
     import pyfftw
     pyfftw.interfaces.cache.enable()
-    pyfftw.interfaces.cache.set_keepalive_time(1.0)
-    nthreads=6 
+    pyfftw.interfaces.cache.set_keepalive_time(30.0)
+    nthreads=8 
 except:
     nthreads=0
 

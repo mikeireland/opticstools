@@ -21,6 +21,23 @@ def from_arcsec(arcsec):
 def to_arcsec(radians):
     return np.degrees(radians)*60.0*60.0
 
+def r0(seeing, wavelength):
+    """Calculate the Fried parameter r0 from the seeing and wavelength.
+    
+    Parameters
+    ----------
+    seeing: float
+        The seeing in arcseconds at 500nm
+    wavelength: float
+        The wavelength in meters
+    
+    Returns
+    -------
+    r0: float
+        The Fried parameter in meters at the input wavelength.
+    """
+    return 0.98*0.5e-6/from_arcsec(seeing)*(wavelength/0.5e-6)**(6/5)
+
 def bb_photonrate(T, wave=None, nu=None, delta_wave=None, delta_nu=1.0):
     """Find the photon rate in photons per spatial and temporal
     bandwidth
